@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
+import { RealtimeTranscriber, type RealtimeTranscriptionChunk } from '@/lib/transcription'
+import { getPreferredModel } from '@/lib/model-manager'
 import type { Subject, Recording } from '@shared/types'
 
 export default function RecordPage() {
@@ -26,6 +28,13 @@ export default function RecordPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadDuration, setUploadDuration] = useState<number | null>(null)
   const [isProcessingUpload, setIsProcessingUpload] = useState(false)
+  
+  // Real-time transcription state
+  const [realtimeEnabled, setRealtimeEnabled] = useState(false)
+  const [realtimeChunks, setRealtimeChunks] = useState<RealtimeTranscriptionChunk[]>([])
+  const [isRealtimeProcessing, setIsRealtimeProcessing] = useState(false)
+  const realtimeTranscriberRef = useRef<RealtimeTranscriber | null>(null)
+  const realtimeIntervalRef = useRef<number | null>(null)
   
   // Form state
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -52,11 +61,14 @@ export default function RecordPage() {
     'audio/wave',
     'audio/x-wav',
     'audio/webm',
+    'audio/webm;codecs=opus',
     'audio/ogg',
+    'audio/ogg;codecs=opus',
     'audio/mp4',
     'audio/m4a',
     'audio/x-m4a',
     'audio/flac',
+    'audio/x-flac',
   ]
 
   // Load subjects on mount
@@ -102,6 +114,7 @@ export default function RecordPage() {
 
   async function startRecording() {
     setError(null)
+    setRealtimeChunks([])
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -126,7 +139,7 @@ export default function RecordPage() {
       console.log('Audio analyzer setup complete, starting visualization')
       updateAudioLevel()
 
-      // Create MediaRecorder
+      // Create MediaRecorder with timeslice for real-time transcription
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       })
@@ -136,13 +149,45 @@ export default function RecordPage() {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data)
+          
+          // Also feed to real-time transcriber if enabled
+          if (realtimeEnabled && realtimeTranscriberRef.current) {
+            realtimeTranscriberRef.current.addAudioData(event.data)
+          }
         }
       }
       
       mediaRecorder.onstop = handleRecordingComplete
       
-      mediaRecorder.start()
+      // Start recording with timeslice for real-time chunks (1 second intervals)
+      mediaRecorder.start(1000)
       mediaRecorderRef.current = mediaRecorder
+      
+      // Setup real-time transcription if enabled
+      if (realtimeEnabled) {
+        const modelName = getPreferredModel()
+        realtimeTranscriberRef.current = new RealtimeTranscriber(
+          modelName,
+          'en',
+          (chunk) => {
+            console.log('Real-time chunk received:', chunk)
+            setRealtimeChunks(prev => [...prev, chunk])
+            setIsRealtimeProcessing(false)
+          }
+        )
+        realtimeTranscriberRef.current.start()
+        
+        // Process chunks every 10 seconds
+        realtimeIntervalRef.current = window.setInterval(() => {
+          if (realtimeTranscriberRef.current) {
+            setIsRealtimeProcessing(true)
+            realtimeTranscriberRef.current.processCurrentChunk().catch(err => {
+              console.error('Error processing real-time chunk:', err)
+              setIsRealtimeProcessing(false)
+            })
+          }
+        }, 10000) // Process every 10 seconds
+      }
       
       setIsRecording(true)
       setRecordingTime(0)
@@ -187,8 +232,22 @@ export default function RecordPage() {
       animationFrameRef.current = null
     }
     
+    // Clean up real-time transcription
+    if (realtimeIntervalRef.current) {
+      clearInterval(realtimeIntervalRef.current)
+      realtimeIntervalRef.current = null
+    }
+    
+    if (realtimeTranscriberRef.current) {
+      realtimeTranscriberRef.current.finish().catch(err => {
+        console.error('Error finishing real-time transcription:', err)
+      })
+      realtimeTranscriberRef.current = null
+    }
+    
     setIsRecording(false)
     setIsPaused(false)
+    setIsRealtimeProcessing(false)
   }
 
   function togglePause() {
@@ -283,10 +342,20 @@ export default function RecordPage() {
     
     setError(null)
     
-    // Validate file type
-    if (!ACCEPTED_AUDIO_TYPES.includes(file.type)) {
-      setError(`Unsupported file type: ${file.type}. Please upload MP3, WAV, M4A, OGG, FLAC, or WebM files.`)
+    // Validate file type - check both MIME type and extension
+    const isValidMimeType = ACCEPTED_AUDIO_TYPES.includes(file.type)
+    const fileExt = file.name.toLowerCase().split('.').pop()
+    const validExtensions = ['mp3', 'wav', 'webm', 'ogg', 'opus', 'm4a', 'mp4', 'flac']
+    const isValidExtension = fileExt && validExtensions.includes(fileExt)
+    
+    if (!isValidMimeType && !isValidExtension) {
+      setError(`Unsupported file type: ${file.type || 'unknown'}. Please upload MP3, WAV, M4A, OGG, FLAC, or WebM files.`)
       return
+    }
+    
+    // Show warning if MIME type doesn't match but extension is valid
+    if (!isValidMimeType && isValidExtension) {
+      console.warn(`File has unexpected MIME type (${file.type}) but valid extension (.${fileExt}). Attempting to load...`)
     }
     
     // Validate file size (max 500MB)
@@ -310,7 +379,8 @@ export default function RecordPage() {
       }
     } catch (err) {
       console.error('Failed to get audio duration:', err)
-      setError('Failed to read audio file. Please ensure it is a valid audio file.')
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+      setError(`Failed to read audio file: ${errorMsg}`)
       setSelectedFile(null)
     }
   }
@@ -320,17 +390,48 @@ export default function RecordPage() {
       const audio = new Audio()
       audio.preload = 'metadata'
       
-      audio.onloadedmetadata = () => {
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        cleanup()
+        reject(new Error('Timeout loading audio metadata. The file may be corrupted or in an unsupported format.'))
+      }, 10000) // 10 second timeout
+      
+      const cleanup = () => {
+        clearTimeout(timeout)
         URL.revokeObjectURL(audio.src)
+        audio.removeEventListener('loadedmetadata', onLoaded)
+        audio.removeEventListener('error', onError)
+      }
+      
+      const onLoaded = () => {
+        cleanup()
+        // Check if duration is valid
+        if (!isFinite(audio.duration) || audio.duration <= 0) {
+          reject(new Error('Could not determine audio duration. The file may be corrupted.'))
+          return
+        }
         resolve(audio.duration)
       }
       
-      audio.onerror = () => {
-        URL.revokeObjectURL(audio.src)
-        reject(new Error('Failed to load audio metadata'))
+      const onError = (e: ErrorEvent | Event) => {
+        cleanup()
+        console.error('Audio loading error:', e)
+        
+        // Provide more specific error message
+        const errorMsg = audio.error?.message || 'Unknown error loading audio'
+        reject(new Error(`Failed to load audio file: ${errorMsg}. This may be due to an unsupported codec or corrupted file.`))
       }
       
-      audio.src = URL.createObjectURL(file)
+      audio.addEventListener('loadedmetadata', onLoaded)
+      audio.addEventListener('error', onError)
+      
+      // Create object URL and set as source
+      try {
+        audio.src = URL.createObjectURL(file)
+      } catch (err) {
+        cleanup()
+        reject(new Error('Failed to create audio preview. The file may be corrupted.'))
+      }
     })
   }
   
@@ -377,116 +478,248 @@ export default function RecordPage() {
   const showWarning = recordingTime >= ONE_HOUR && recordingTime < TWO_HOURS
 
   return (
-    <div className="p-8">
-      <div className="max-w-2xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 md:p-8">
+      <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Record Audio</h1>
-          <p className="text-muted-foreground mt-2">
-            Record audio for transcription
+          <h1 className="text-2xl sm:text-3xl font-bold">Record or Upload Audio</h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+            Record audio live or upload an existing file for transcription
           </p>
+        </div>
+        
+        {/* Mode Toggle */}
+        <div className="flex justify-center">
+          <div className="inline-flex rounded-lg border border-input p-1 bg-muted w-full sm:w-auto">
+            <button
+              onClick={() => setMode('record')}
+              disabled={isRecording}
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                mode === 'record' 
+                  ? 'bg-background text-foreground shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <Mic size={16} />
+              Record
+            </button>
+            <button
+              onClick={() => setMode('upload')}
+              disabled={isRecording}
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                mode === 'upload' 
+                  ? 'bg-background text-foreground shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <Upload size={16} />
+              Upload
+            </button>
+          </div>
         </div>
 
         {/* Error message */}
         {error && (
-          <Card className="p-4 bg-destructive/10 border-destructive">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle size={20} />
-              <p className="text-sm">{error}</p>
+          <Card className="p-3 sm:p-4 bg-destructive/10 border-destructive">
+            <div className="flex items-start gap-2 text-destructive">
+              <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+              <p className="text-xs sm:text-sm">{error}</p>
             </div>
           </Card>
         )}
 
-        {/* Recording UI */}
-        <Card className="p-12">
-          <div className="flex flex-col items-center gap-8">
-            {/* Waveform visualization */}
-            <div className="w-full h-32 bg-accent rounded-lg flex items-center justify-center">
-              <div className="flex items-end gap-1 h-24">
-                {frequencyData.map((value, i) => {
-                  // Amplify the values and add minimum height
-                  const height = isRecording && !isPaused 
-                    ? Math.max(10, Math.min(100, value * 200)) // Amplify by 2x, min 10%, max 100%
-                    : 10
-                  
-                  return (
-                    <div
-                      key={i}
-                      className="w-1 bg-primary rounded-full transition-all duration-75"
-                      style={{ height: `${height}%` }}
-                    />
-                  )
-                })}
+        {mode === 'record' ? (
+          // Recording UI
+          <>
+            <Card className="p-6 sm:p-8 md:p-12">
+              <div className="flex flex-col items-center gap-6 sm:gap-8">
+                {/* Waveform visualization */}
+                <div className="w-full h-24 sm:h-32 bg-accent rounded-lg flex items-center justify-center">
+                  <div className="flex items-end gap-0.5 sm:gap-1 h-16 sm:h-24">
+                    {frequencyData.map((value, i) => {
+                      // Amplify the values and add minimum height
+                      const height = isRecording && !isPaused 
+                        ? Math.max(10, Math.min(100, value * 200)) // Amplify by 2x, min 10%, max 100%
+                        : 10
+                      
+                      return (
+                        <div
+                          key={i}
+                          className="w-0.5 sm:w-1 bg-primary rounded-full transition-all duration-75"
+                          style={{ height: `${height}%` }}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Timer */}
+                <div className="text-3xl sm:text-4xl font-mono font-bold">
+                  {formatTime(recordingTime)}
+                </div>
+
+                {/* Warning message */}
+                {showWarning && (
+                  <div className="flex items-start gap-2 text-yellow-600 dark:text-yellow-500 text-center sm:text-left">
+                    <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+                    <p className="text-xs sm:text-sm">
+                      {recordingTime >= TWO_HOURS - 60 
+                        ? 'Recording will stop automatically at 2 hours' 
+                        : 'You have been recording for over 1 hour'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Controls */}
+                <div className="flex items-center gap-3 sm:gap-4">
+                  {!isRecording ? (
+                    <Button
+                      onClick={startRecording}
+                      size="lg"
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-full"
+                      disabled={!session}
+                    >
+                      <Mic size={24} className="sm:hidden" />
+                      <Mic size={32} className="hidden sm:block" />
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={togglePause}
+                        variant="secondary"
+                        size="lg"
+                        className="w-12 h-12 sm:w-16 sm:h-16 rounded-full"
+                      >
+                        {isPaused ? <Play size={20} className="sm:hidden" /> : <Pause size={20} className="sm:hidden" />}
+                        {isPaused ? <Play size={24} className="hidden sm:block" /> : <Pause size={24} className="hidden sm:block" />}
+                      </Button>
+                      <Button
+                        onClick={stopRecording}
+                        variant="destructive"
+                        size="lg"
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-full"
+                      >
+                        <Square size={24} className="sm:hidden" />
+                        <Square size={32} className="hidden sm:block" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {isRecording && (
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {isPaused ? 'Recording paused' : 'Recording in progress...'}
+                  </p>
+                )}
+              </div>
+            </Card>
+            
+            {/* Real-time transcription display */}
+            {realtimeEnabled && realtimeChunks.length > 0 && (
+              <Card className="p-4 sm:p-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base sm:text-lg font-semibold">Real-time Transcription</h3>
+                    {isRealtimeProcessing && (
+                      <span className="text-xs text-muted-foreground">Processing...</span>
+                    )}
+                  </div>
+                  <div className="max-h-48 sm:max-h-64 overflow-y-auto space-y-2 text-sm">
+                    {realtimeChunks.map((chunk, idx) => (
+                      <div key={idx} className="p-2 sm:p-3 bg-accent rounded-lg">
+                        <div className="text-xs text-muted-foreground mb-1">
+                          {formatTime(Math.floor(chunk.timestamp))}
+                        </div>
+                        <div className="text-xs sm:text-sm">{chunk.text}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Note: Real-time transcription is approximate. A final, more accurate transcription will be available after stopping the recording.
+                  </p>
+                </div>
+              </Card>
+            )}
+          </>
+        ) : (
+          // Upload UI
+          <Card className="p-6 sm:p-8 md:p-12">
+            <div className="flex flex-col items-center gap-6">
+              <div className="w-full">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="audio-file-input"
+                />
+                
+                {!selectedFile ? (
+                  <label
+                    htmlFor="audio-file-input"
+                    className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed border-input rounded-lg cursor-pointer hover:border-primary transition-colors bg-accent/50"
+                  >
+                    <Upload size={40} className="sm:hidden text-muted-foreground mb-4" />
+                    <Upload size={48} className="hidden sm:block text-muted-foreground mb-4" />
+                    <p className="text-base sm:text-lg font-medium mb-2 px-4 text-center">Click to upload audio file</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground px-4 text-center">
+                      Supports MP3, WAV, M4A, OGG, FLAC, WebM
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Max file size: 500MB
+                    </p>
+                  </label>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 sm:p-6 border border-input rounded-lg bg-accent/50">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-base sm:text-lg mb-2 break-words">{selectedFile.name}</p>
+                          <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
+                            <p>Size: {formatFileSize(selectedFile.size)}</p>
+                            {uploadDuration && (
+                              <p>Duration: {formatTime(uploadDuration)}</p>
+                            )}
+                            <p>Type: {selectedFile.type || 'Unknown'}</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearFile}
+                          disabled={isProcessingUpload}
+                          className="w-full sm:w-auto"
+                        >
+                          Change
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <Button
+                      onClick={handleUploadSave}
+                      disabled={!session || isProcessingUpload}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {isProcessingUpload ? 'Saving...' : 'Save Recording'}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Timer */}
-            <div className="text-4xl font-mono font-bold">
-              {formatTime(recordingTime)}
-            </div>
-
-            {/* Warning message */}
-            {showWarning && (
-              <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
-                <AlertCircle size={20} />
-                <p className="text-sm">
-                  {recordingTime >= TWO_HOURS - 60 
-                    ? 'Recording will stop automatically at 2 hours' 
-                    : 'You have been recording for over 1 hour'}
-                </p>
-              </div>
-            )}
-
-            {/* Controls */}
-            <div className="flex items-center gap-4">
-              {!isRecording ? (
-                <Button
-                  onClick={startRecording}
-                  size="lg"
-                  className="w-20 h-20 rounded-full"
-                  disabled={!session}
-                >
-                  <Mic size={32} />
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    onClick={togglePause}
-                    variant="secondary"
-                    size="lg"
-                    className="w-16 h-16 rounded-full"
-                  >
-                    {isPaused ? <Play size={24} /> : <Pause size={24} />}
-                  </Button>
-                  <Button
-                    onClick={stopRecording}
-                    variant="destructive"
-                    size="lg"
-                    className="w-20 h-20 rounded-full"
-                  >
-                    <Square size={32} />
-                  </Button>
-                </>
-              )}
-            </div>
-
-            {isRecording && (
-              <p className="text-sm text-muted-foreground">
-                {isPaused ? 'Recording paused' : 'Recording in progress...'}
-              </p>
-            )}
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {/* Form fields */}
-        <Card className="p-6 space-y-4">
+        <Card className="p-4 sm:p-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
             <select
               id="subject"
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(e.target.value)}
-              disabled={isRecording}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+              disabled={isRecording || isProcessingUpload}
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 text-sm sm:text-base"
             >
               <option value="">No subject (optional)</option>
               {subjects.map((subject) => (
@@ -504,13 +737,33 @@ export default function RecordPage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              disabled={isRecording}
+              disabled={isRecording || isProcessingUpload}
               placeholder="Untitled Recording"
+              className="text-sm sm:text-base"
             />
           </div>
+          
+          {mode === 'record' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="realtime-transcription" className="text-sm sm:text-base">Real-time Transcription</Label>
+                <input
+                  id="realtime-transcription"
+                  type="checkbox"
+                  checked={realtimeEnabled}
+                  onChange={(e) => setRealtimeEnabled(e.target.checked)}
+                  disabled={isRecording}
+                  className="h-4 w-4 rounded border-input text-primary focus:ring-2 focus:ring-ring disabled:opacity-50"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Transcribe audio in real-time as you record (experimental). This uses more CPU and battery.
+              </p>
+            </div>
+          )}
 
           {subjects.length === 0 && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               No subjects available. Recordings will be saved without a subject.
             </p>
           )}

@@ -1,78 +1,116 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 
-type Theme = 'light' | 'dark' | 'spotify' | 'ghibli' | 'marvel' | 'ocean' | 'sunset'
+type ThemePreset = 'default' | 'forest' | 'nature' | 'america' | 'ocean' | 'sunset' | 'lavender' | 'halloween' | 'winter' | 'valentine' | 'spring'
+type ThemeMode = 'light' | 'dark' | 'system'
 
 type ThemeProviderProps = {
   children: ReactNode
-  defaultTheme?: Theme
-  storageKey?: string
+  defaultPreset?: ThemePreset
+  defaultMode?: ThemeMode
+  presetStorageKey?: string
+  modeStorageKey?: string
 }
 
 type ThemeProviderState = {
-  theme: Theme
-  setTheme: (theme: Theme) => void
+  preset: ThemePreset
+  mode: ThemeMode
+  resolvedMode: 'light' | 'dark' // The actual mode being used (after resolving 'system')
+  setPreset: (preset: ThemePreset) => void
+  setMode: (mode: ThemeMode) => void
 }
 
 const initialState: ThemeProviderState = {
-  theme: 'light',
-  setTheme: () => null,
+  preset: 'default',
+  mode: 'system',
+  resolvedMode: 'light',
+  setPreset: () => null,
+  setMode: () => null,
 }
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
+function getSystemTheme(): 'light' | 'dark' {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 export function ThemeProvider({
   children,
-  defaultTheme = 'light',
-  storageKey = 'transcriber-theme',
+  defaultPreset = 'default',
+  defaultMode = 'system',
+  presetStorageKey = 'transcriber-theme-preset',
+  modeStorageKey = 'transcriber-theme-mode',
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const storedTheme = localStorage.getItem(storageKey) as Theme
-    if (storedTheme) {
-      return storedTheme
-    }
-    
-    // Check system preference
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    return prefersDark ? 'dark' : defaultTheme
+  const [preset, setPresetState] = useState<ThemePreset>(() => {
+    const stored = localStorage.getItem(presetStorageKey) as ThemePreset
+    return stored || defaultPreset
   })
 
+  const [mode, setModeState] = useState<ThemeMode>(() => {
+    const stored = localStorage.getItem(modeStorageKey) as ThemeMode
+    return stored || defaultMode
+  })
+
+  const [resolvedMode, setResolvedMode] = useState<'light' | 'dark'>(() => {
+    if (mode === 'system') {
+      return getSystemTheme()
+    }
+    return mode
+  })
+
+  // Apply theme to document
   useEffect(() => {
     const root = window.document.documentElement
 
+    // Remove all possible classes
     root.classList.remove('light', 'dark')
     
-    if (theme === 'light' || theme === 'dark') {
-      root.classList.add(theme)
+    // Apply the resolved mode (light or dark)
+    root.classList.add(resolvedMode)
+    
+    // Apply theme preset as data attribute
+    if (preset === 'default') {
       root.removeAttribute('data-theme')
     } else {
-      root.classList.add('dark') // Most custom themes work better with dark mode base
-      root.setAttribute('data-theme', theme)
+      root.setAttribute('data-theme', preset)
     }
-  }, [theme])
+  }, [preset, resolvedMode])
 
-  // Listen for system theme changes (only if user hasn't manually set a theme)
+  // Listen for system theme changes (only when mode is 'system')
   useEffect(() => {
-    const storedTheme = localStorage.getItem(storageKey)
-    if (storedTheme) {
-      // User has manually set a theme, don't override
+    if (mode !== 'system') {
       return
     }
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = (e: MediaQueryListEvent) => {
-      setTheme(e.matches ? 'dark' : 'light')
+    const handleChange = () => {
+      setResolvedMode(getSystemTheme())
     }
 
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [storageKey])
+  }, [mode])
+
+  // Update resolved mode when mode changes
+  useEffect(() => {
+    if (mode === 'system') {
+      setResolvedMode(getSystemTheme())
+    } else {
+      setResolvedMode(mode)
+    }
+  }, [mode])
 
   const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
+    preset,
+    mode,
+    resolvedMode,
+    setPreset: (newPreset: ThemePreset) => {
+      localStorage.setItem(presetStorageKey, newPreset)
+      setPresetState(newPreset)
+    },
+    setMode: (newMode: ThemeMode) => {
+      localStorage.setItem(modeStorageKey, newMode)
+      setModeState(newMode)
     },
   }
 
@@ -92,12 +130,69 @@ export const useTheme = () => {
   return context
 }
 
-export const themes: Array<{ value: Theme; label: string }> = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'spotify', label: 'Spotify' },
-  { value: 'ghibli', label: 'Ghibli Studio' },
-  { value: 'marvel', label: 'Marvel' },
-  { value: 'ocean', label: 'Ocean' },
-  { value: 'sunset', label: 'Sunset' },
+type ThemeInfo = {
+  value: ThemePreset
+  label: string
+  description: string
+  seasonal?: {
+    months: number[] // 0-11 (January = 0, December = 11)
+    emoji?: string
+  }
+}
+
+const allThemePresets: ThemeInfo[] = [
+  { value: 'default', label: 'Default', description: 'Clean and minimal design' },
+  { value: 'forest', label: 'Forest', description: 'Bold green accents inspired by nature' },
+  { value: 'nature', label: 'Nature', description: 'Soft earth tones and organic colors' },
+  { value: 'america', label: 'America', description: 'Patriotic red, white, and blue palette' },
+  { value: 'ocean', label: 'Ocean', description: 'Calm blues and aqua tones' },
+  { value: 'sunset', label: 'Sunset', description: 'Warm oranges and golden hues' },
+  { value: 'lavender', label: 'Lavender Haze', description: 'Dreamy purples and soft violet tones' },
+  { 
+    value: 'halloween', 
+    label: 'Halloween', 
+    description: 'Spooky oranges and blacks',
+    seasonal: { months: [9], emoji: '🎃' } // October (0-indexed = 9)
+  },
+  { 
+    value: 'winter', 
+    label: 'Winter Holiday', 
+    description: 'Festive reds, greens, and golds',
+    seasonal: { months: [11], emoji: '❄️' } // December
+  },
+  { 
+    value: 'valentine', 
+    label: 'Valentine', 
+    description: 'Romantic pinks and reds',
+    seasonal: { months: [1], emoji: '💕' } // February
+  },
+  { 
+    value: 'spring', 
+    label: 'Spring Bloom', 
+    description: 'Fresh pastels and blooming colors',
+    seasonal: { months: [3], emoji: '🌸' } // April
+  },
 ]
+
+// Filter themes based on current month
+export function getAvailableThemes(): ThemeInfo[] {
+  const currentMonth = new Date().getMonth() // 0-11
+  
+  return allThemePresets.filter(theme => {
+    // Always show non-seasonal themes
+    if (!theme.seasonal) return true
+    
+    // Show seasonal themes only during their designated months
+    return theme.seasonal.months.includes(currentMonth)
+  })
+}
+
+export const themePresets: Array<{ value: ThemePreset; label: string; description: string }> = allThemePresets
+
+export const themeModes: Array<{ value: ThemeMode; label: string; description: string }> = [
+  { value: 'light', label: 'Light', description: 'Light mode' },
+  { value: 'dark', label: 'Dark', description: 'Dark mode' },
+  { value: 'system', label: 'System', description: 'Follow system preference' },
+]
+
+export type { ThemePreset, ThemeMode }

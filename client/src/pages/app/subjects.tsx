@@ -96,24 +96,24 @@ export default function SubjectsPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 md:p-8">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Subjects</h1>
-            <p className="text-muted-foreground mt-2">
+            <h1 className="text-2xl sm:text-3xl font-bold">Subjects</h1>
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
               Organize your recordings into subjects
             </p>
           </div>
           
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus size={20} />
                 New Subject
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[425px] max-w-[calc(100vw-2rem)] mx-4">
               <DialogHeader>
                 <DialogTitle>Create Subject</DialogTitle>
                 <DialogDescription>
@@ -142,11 +142,11 @@ export default function SubjectsPage() {
                     />
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <DialogFooter className="flex-col sm:flex-row gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isCreating}>
+                  <Button type="submit" disabled={isCreating} className="w-full sm:w-auto">
                     {isCreating ? 'Creating...' : 'Create Subject'}
                   </Button>
                 </DialogFooter>
@@ -156,26 +156,26 @@ export default function SubjectsPage() {
         </div>
 
         {subjects.length === 0 ? (
-          <Card className="p-12 text-center">
+          <Card className="p-8 sm:p-12 text-center">
             <Folder size={48} className="mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">No subjects yet</h2>
-            <p className="text-muted-foreground text-sm mb-6">
+            <h2 className="text-lg sm:text-xl font-semibold mb-2">No subjects yet</h2>
+            <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
               Create your first subject to organize recordings by topic, project, or category
             </p>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button onClick={() => setIsDialogOpen(true)} className="w-full sm:w-auto">
               <Plus size={20} />
               Create Subject
             </Button>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {subjects.map((subject) => (
-              <Card key={subject.id} className="p-6 hover:border-primary transition">
+              <Card key={subject.id} className="p-4 sm:p-6 hover:border-primary transition">
                 <Link to={`/app/subjects/${subject.id}`} className="block">
                   <div className="flex items-start gap-3 mb-3">
                     <Folder className="text-primary flex-shrink-0" size={24} />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg truncate">{subject.name}</h3>
+                      <h3 className="font-semibold text-base sm:text-lg truncate">{subject.name}</h3>
                       {subject.description && (
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                           {subject.description}

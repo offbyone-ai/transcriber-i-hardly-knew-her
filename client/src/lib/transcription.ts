@@ -182,3 +182,119 @@ export async function isTranscriptionReady(_modelName: string): Promise<boolean>
   // Models are downloaded on-demand, so always return true
   return true
 }
+
+// Real-time transcription with chunking
+export type RealtimeTranscriptionChunk = {
+  text: string
+  timestamp: number // when this chunk started (seconds from recording start)
+  segments: TranscriptionSegment[]
+}
+
+export type RealtimeTranscriptionCallback = (chunk: RealtimeTranscriptionChunk) => void
+
+export class RealtimeTranscriber {
+  private audioChunks: Blob[] = []
+  private startTime: number = 0
+  private chunkStartTime: number = 0
+  private isTranscribing: boolean = false
+  private modelName: string
+  private language?: string
+  private onChunkComplete?: RealtimeTranscriptionCallback
+  private processingPromise: Promise<void> | null = null
+  
+  constructor(
+    modelName: string,
+    language?: string,
+    onChunkComplete?: RealtimeTranscriptionCallback
+  ) {
+    this.modelName = modelName
+    this.language = language
+    this.onChunkComplete = onChunkComplete
+  }
+  
+  start() {
+    this.startTime = Date.now()
+    this.chunkStartTime = this.startTime
+    this.audioChunks = []
+    this.isTranscribing = true
+  }
+  
+  addAudioData(blob: Blob) {
+    if (!this.isTranscribing) return
+    this.audioChunks.push(blob)
+  }
+  
+  async processCurrentChunk(): Promise<void> {
+    if (!this.isTranscribing || this.audioChunks.length === 0) return
+    
+    // Wait for any in-progress processing
+    if (this.processingPromise) {
+      await this.processingPromise
+    }
+    
+    // Create a promise for this processing task
+    this.processingPromise = this._doProcessChunk()
+    await this.processingPromise
+    this.processingPromise = null
+  }
+  
+  private async _doProcessChunk(): Promise<void> {
+    const chunksToProcess = [...this.audioChunks]
+    const chunkStartSeconds = (this.chunkStartTime - this.startTime) / 1000
+    
+    // Reset for next chunk
+    this.audioChunks = []
+    this.chunkStartTime = Date.now()
+    
+    if (chunksToProcess.length === 0) return
+    
+    try {
+      // Combine all chunks into one blob
+      const audioBlob = new Blob(chunksToProcess, { type: 'audio/webm;codecs=opus' })
+      
+      // Transcribe the chunk
+      const result = await transcribeAudio(
+        {
+          audioBlob,
+          modelName: this.modelName,
+          language: this.language,
+        },
+        undefined // No progress callback for real-time chunks
+      )
+      
+      // Call the callback with the result
+      if (this.onChunkComplete) {
+        this.onChunkComplete({
+          text: result.text,
+          timestamp: chunkStartSeconds,
+          segments: result.segments.map(seg => ({
+            ...seg,
+            start: seg.start + chunkStartSeconds,
+            end: seg.end + chunkStartSeconds,
+          })),
+        })
+      }
+    } catch (error) {
+      console.error('Error processing real-time chunk:', error)
+    }
+  }
+  
+  stop() {
+    this.isTranscribing = false
+  }
+  
+  async finish(): Promise<void> {
+    this.isTranscribing = false
+    
+    // Process any remaining audio
+    if (this.audioChunks.length > 0) {
+      await this.processCurrentChunk()
+    }
+    
+    // Wait for any in-progress processing
+    if (this.processingPromise) {
+      await this.processingPromise
+    }
+  }
+}
+

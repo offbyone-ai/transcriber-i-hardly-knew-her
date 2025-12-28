@@ -35,6 +35,21 @@ class TranscriberDB extends Dexie {
       transcriptions: 'id, recordingId, userId',
       models: 'name, downloadedAt',
     })
+    
+    // Version 3: Add source and originalFileName fields to recordings
+    this.version(3).stores({
+      subjects: 'id, userId, name, createdAt',
+      recordings: 'id, subjectId, userId, createdAt, title, source',
+      transcriptions: 'id, recordingId, userId',
+      models: 'name, downloadedAt',
+    }).upgrade(tx => {
+      // Migrate existing recordings to have source='recording'
+      return tx.table('recordings').toCollection().modify(recording => {
+        if (!recording.source) {
+          recording.source = 'recording'
+        }
+      })
+    })
   }
 }
 
