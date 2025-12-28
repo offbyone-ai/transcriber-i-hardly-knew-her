@@ -1,0 +1,59 @@
+# Dependencies
+node_modules
+**/node_modules
+bun.lock
+
+# Build outputs
+dist
+**/dist
+.turbo
+**/.turbo
+client/dist
+server/static
+
+# Development
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage
+.nyc_output
+playwright-report
+test-results
+
+# Documentation (not needed in container)
+*.md
+docs/
+CONTRIBUTING.md
+LICENSE
+
+# SQLite databases (should be volume-mounted)
+*.db
+*.db-shm
+*.db-wal
+
+# Other
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml

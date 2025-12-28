@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  transcriber:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SERVER_URL: http://localhost:3000
+    container_name: transcriber-app
+    ports:
+      - "3000:3000"
+    environment:
+      # Server configuration
+      NODE_ENV: production
+      PORT: 3000
+      
+      # Better-auth configuration
+      # Generate with: openssl rand -base64 32
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      
+      # Database path (SQLite)
+      DATABASE_PATH: /app/data/auth.db
+    volumes:
+      # Persist SQLite database
+      - transcriber-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - transcriber-network
+
+volumes:
+  transcriber-data:
+    driver: local
+
+networks:
+  transcriber-network:
+    driver: bridge

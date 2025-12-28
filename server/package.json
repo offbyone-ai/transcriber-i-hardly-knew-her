@@ -4,8 +4,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "dev": "bun --watch run src/index.ts"
+    "build": "bun build --compile --minify --sourcemap --bytecode --outfile transcriber ./src/index.ts",
+    "build:types": "tsc",
+    "dev": "bun --watch run src/index.ts",
+    "start": "./transcriber"
   },
   "dependencies": {
     "better-auth": "^1.4.9",
