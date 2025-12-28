@@ -1,0 +1,219 @@
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { useSession } from '@/lib/auth-client'
+import { db } from '@/lib/db'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Folder, Mic, FileText } from 'lucide-react'
+import type { Subject, Recording } from '@shared/types'
+
+export default function DashboardPage() {
+  const { data: session } = useSession()
+  const [stats, setStats] = useState({
+    subjects: 0,
+    recordings: 0,
+    transcriptions: 0,
+  })
+  const [recentSubjects, setRecentSubjects] = useState<Subject[]>([])
+  const [recentRecordings, setRecentRecordings] = useState<Recording[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    loadDashboardData()
+  }, [session])
+
+  async function loadDashboardData() {
+    if (!session?.user?.id) return
+
+    setIsLoading(true)
+    try {
+      // Get counts
+      const subjectsCount = await db.subjects.where('userId').equals(session.user.id).count()
+      const recordingsCount = await db.recordings.where('userId').equals(session.user.id).count()
+      const transcriptionsCount = await db.transcriptions.where('userId').equals(session.user.id).count()
+
+      setStats({
+        subjects: subjectsCount,
+        recordings: recordingsCount,
+        transcriptions: transcriptionsCount,
+      })
+
+      // Get recent items
+      const subjects = await db.subjects
+        .where('userId')
+        .equals(session.user.id)
+        .reverse()
+        .sortBy('createdAt')
+      setRecentSubjects(subjects.slice(0, 3))
+
+      const recordings = await db.recordings
+        .where('userId')
+        .equals(session.user.id)
+        .reverse()
+        .sortBy('createdAt')
+      setRecentRecordings(recordings.slice(0, 5))
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="text-muted-foreground">Loading dashboard...</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-2">
+            Your transcription overview
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard
+            label="Total Subjects"
+            value={stats.subjects.toString()}
+            description="Organized collections"
+            icon={<Folder size={24} />}
+          />
+          <StatCard
+            label="Total Recordings"
+            value={stats.recordings.toString()}
+            description="Audio files stored"
+            icon={<Mic size={24} />}
+          />
+          <StatCard
+            label="Total Transcriptions"
+            value={stats.transcriptions.toString()}
+            description="Completed transcripts"
+            icon={<FileText size={24} />}
+          />
+        </div>
+
+        {/* Recent Subjects */}
+        {recentSubjects.length > 0 && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Recent Subjects</h2>
+              <Link to="/app/subjects">
+                <Button variant="ghost" size="sm">View All</Button>
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {recentSubjects.map((subject) => (
+                <Link
+                  key={subject.id}
+                  to={`/app/subjects/${subject.id}`}
+                  className="block p-3 rounded-lg hover:bg-accent transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <Folder size={20} className="text-primary" />
+                    <div className="flex-1">
+                      <div className="font-medium">{subject.name}</div>
+                      {subject.description && (
+                        <div className="text-sm text-muted-foreground truncate">
+                          {subject.description}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(subject.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Recent Recordings */}
+        {recentRecordings.length > 0 && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Recent Recordings</h2>
+            </div>
+            <div className="space-y-2">
+              {recentRecordings.map((recording) => (
+                <Link
+                  key={recording.id}
+                  to={`/app/recordings/${recording.id}`}
+                  className="block p-3 rounded-lg hover:bg-accent transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <Mic size={20} className="text-primary" />
+                    <div className="flex-1">
+                      <div className="font-medium">{recording.title || 'Untitled Recording'}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {Math.floor(recording.duration / 60)}:{String(Math.floor(recording.duration % 60)).padStart(2, '0')} • {(recording.fileSize / 1024 / 1024).toFixed(2)} MB
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(recording.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Empty state */}
+        {stats.subjects === 0 && stats.recordings === 0 && (
+          <Card className="p-12 text-center">
+            <h2 className="text-xl font-semibold mb-2">Get Started</h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              Create your first subject or start recording to begin transcribing
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Link to="/app/subjects">
+                <Button>
+                  <Folder size={20} />
+                  Create Subject
+                </Button>
+              </Link>
+              <Link to="/app/record">
+                <Button variant="outline">
+                  <Mic size={20} />
+                  Start Recording
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ 
+  label, 
+  value, 
+  description,
+  icon,
+}: { 
+  label: string
+  value: string
+  description: string
+  icon: React.ReactNode
+}) {
+  return (
+    <Card className="p-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-sm text-muted-foreground">{label}</div>
+          <div className="text-3xl font-bold mt-2">{value}</div>
+          <div className="text-xs text-muted-foreground mt-1">{description}</div>
+        </div>
+        <div className="text-muted-foreground">{icon}</div>
+      </div>
+    </Card>
+  )
+}
