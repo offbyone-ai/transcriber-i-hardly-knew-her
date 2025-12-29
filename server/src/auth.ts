@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth"
 import { Database } from "bun:sqlite"
 import path from "path"
-import { mkdirSync, existsSync } from "node:fs"
+import { mkdirSync, existsSync, readFileSync } from "node:fs"
 import type { BetterAuthOptions } from "better-auth"
 
 // Use environment variable for database path in Docker, fallback to local path
@@ -31,6 +31,30 @@ db.run("PRAGMA page_size = 4096;")
 
 console.log(`📦 Database initialized: ${dbPath}`)
 console.log(`📊 WAL mode enabled for optimal Docker performance`)
+
+// Run schema migrations on startup
+try {
+  // In dev: __dirname is /server/src, schema is at /server/schema.sql
+  // In prod: __dirname is /app/server, schema is at /app/schema.sql
+  let schemaPath = path.join(__dirname, "../schema.sql")
+  
+  // Check if we're in production (compiled executable)
+  if (!existsSync(schemaPath)) {
+    // Try production path: /app/schema.sql
+    schemaPath = path.join(process.cwd(), "schema.sql")
+  }
+  
+  if (existsSync(schemaPath)) {
+    const schema = readFileSync(schemaPath, "utf-8")
+    db.exec(schema)
+    console.log(`✅ Database schema initialized/updated`)
+  } else {
+    console.warn(`⚠️  Schema file not found at ${schemaPath}`)
+  }
+} catch (error) {
+  console.error(`❌ Failed to initialize database schema:`, error)
+  throw error
+}
 
 export const auth = betterAuth({
   database: db as any, // Bun's sqlite has a compatible API

@@ -19,6 +19,7 @@ COPY tsconfig.json ./
 COPY shared/ ./shared/
 COPY server/src/ ./server/src/
 COPY server/tsconfig.json ./server/tsconfig.json
+COPY server/schema.sql ./server/schema.sql
 
 # Install dependencies with frozen lockfile
 # Postinstall will build shared + server packages during this step
@@ -50,6 +51,9 @@ WORKDIR /app
 
 # Copy the compiled Bun executable from build stage
 COPY --from=build /app/server/transcriber transcriber
+
+# Copy database schema file
+COPY --from=build /app/server/schema.sql schema.sql
 
 # Copy static client files (client build output)
 COPY --from=build /app/server/static/ static/
