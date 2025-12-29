@@ -103,7 +103,7 @@ export default function DashboardPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Recent Subjects</h2>
-              <Link to="/app/subjects">
+              <Link to="/subjects">
                 <Button variant="ghost" size="sm">View All</Button>
               </Link>
             </div>
@@ -111,7 +111,7 @@ export default function DashboardPage() {
               {recentSubjects.map((subject) => (
                 <Link
                   key={subject.id}
-                  to={`/app/subjects/${subject.id}`}
+                  to={`/subjects/${subject.id}`}
                   className="block p-3 rounded-lg hover:bg-accent transition"
                 >
                   <div className="flex items-center gap-3">
@@ -144,7 +144,7 @@ export default function DashboardPage() {
               {recentRecordings.map((recording) => (
                 <Link
                   key={recording.id}
-                  to={`/app/recordings/${recording.id}`}
+                  to={`/recordings/${recording.id}`}
                   className="block p-3 rounded-lg hover:bg-accent transition"
                 >
                   <div className="flex items-center gap-3">
@@ -173,13 +173,13 @@ export default function DashboardPage() {
               Create your first subject or start recording to begin transcribing
             </p>
             <div className="flex gap-4 justify-center">
-              <Link to="/app/subjects">
+              <Link to="/subjects">
                 <Button>
                   <Folder size={20} />
                   Create Subject
                 </Button>
               </Link>
-              <Link to="/app/record">
+              <Link to="/record">
                 <Button variant="outline">
                   <Mic size={20} />
                   Start Recording

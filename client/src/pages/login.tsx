@@ -19,16 +19,25 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const result = await signIn.email({
-        email,
-        password,
-      })
+      const result = await signIn.email(
+        {
+          email,
+          password,
+        },
+        {
+          onSuccess: () => {
+            // Navigate after successful login
+            navigate('/')
+          },
+          onError: (ctx) => {
+            setError(ctx.error.message || 'Login failed')
+          },
+        }
+      )
 
-      if (result.error) {
-        setError(result.error.message || 'Login failed')
-      } else {
-        // Navigate to root - basename '/app' will make this /app/
-        navigate('/')
+      // Handle legacy error format if onError callback didn't fire
+      if (result?.error && result.error.message) {
+        setError(result.error.message)
       }
     } catch (err) {
       setError('An unexpected error occurred')

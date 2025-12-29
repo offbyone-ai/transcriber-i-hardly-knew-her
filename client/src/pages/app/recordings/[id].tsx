@@ -44,7 +44,7 @@ export default function RecordingDetailPage() {
       // Load recording
       const recordingData = await db.recordings.get(id)
       if (!recordingData) {
-        navigate('/app/subjects')
+        navigate('/subjects')
         return
       }
       setRecording(recordingData)
@@ -74,9 +74,9 @@ export default function RecordingDetailPage() {
       
       // Navigate back to subject or subjects list
       if (recording?.subjectId) {
-        navigate(`/app/subjects/${recording.subjectId}`)
+        navigate(`/subjects/${recording.subjectId}`)
       } else {
-        navigate('/app/subjects')
+        navigate('/subjects')
       }
     } catch (error) {
       console.error('Failed to delete recording:', error)
@@ -192,7 +192,7 @@ export default function RecordingDetailPage() {
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
           <Link 
-            to={recording.subjectId ? `/app/subjects/${recording.subjectId}` : '/app/subjects'}
+            to={recording.subjectId ? `/subjects/${recording.subjectId}` : '/subjects'}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft size={16} />

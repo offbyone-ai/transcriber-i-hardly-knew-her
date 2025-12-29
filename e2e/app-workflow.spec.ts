@@ -39,8 +39,9 @@ test.describe('Transcriber App - Full Workflow', () => {
       
       // Should redirect to dashboard after successful signup
       await page.waitForURL(/\/app\/?$/, { timeout: 10000 })
-      // Wait for dashboard content to load
-      await page.waitForSelector('text=Dashboard, text=Get Started', { timeout: 5000 })
+      // Wait for dashboard content to load - look in main content area
+      await expect(page.locator('main')).toContainText('Dashboard', { timeout: 5000 })
+      await expect(page.locator('main')).toContainText('Get Started')
       
       console.log('✓ User signed up successfully')
     })

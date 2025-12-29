@@ -171,7 +171,7 @@ export default function SubjectsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {subjects.map((subject) => (
               <Card key={subject.id} className="p-4 sm:p-6 hover:border-primary transition">
-                <Link to={`/app/subjects/${subject.id}`} className="block">
+                <Link to={`/subjects/${subject.id}`} className="block">
                   <div className="flex items-start gap-3 mb-3">
                     <Folder className="text-primary flex-shrink-0" size={24} />
                     <div className="flex-1 min-w-0">

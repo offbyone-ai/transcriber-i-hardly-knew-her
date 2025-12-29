@@ -25,7 +25,7 @@ export default function SubjectDetailPage() {
       // Load subject
       const subjectData = await db.subjects.get(id)
       if (!subjectData) {
-        navigate('/app/subjects')
+        navigate('/subjects')
         return
       }
       setSubject(subjectData)
@@ -72,7 +72,7 @@ export default function SubjectDetailPage() {
       <div className="max-w-6xl mx-auto space-y-8">
         <div>
           <Link 
-            to="/app/subjects" 
+            to="/subjects" 
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
           >
             <ArrowLeft size={16} />
@@ -88,7 +88,7 @@ export default function SubjectDetailPage() {
                 </p>
               )}
             </div>
-            <Link to="/app/record">
+            <Link to="/record">
               <Button>
                 <Plus size={20} />
                 New Recording
@@ -104,7 +104,7 @@ export default function SubjectDetailPage() {
             <p className="text-muted-foreground text-sm mb-6">
               Record audio for this subject to get started with transcription
             </p>
-            <Link to="/app/record">
+            <Link to="/record">
               <Button>
                 <Mic size={20} />
                 Start Recording
@@ -119,7 +119,7 @@ export default function SubjectDetailPage() {
                   <Mic size={24} className="text-primary flex-shrink-0 mt-1" />
                   
                   <div className="flex-1 min-w-0">
-                    <Link to={`/app/recordings/${recording.id}`}>
+                    <Link to={`/recordings/${recording.id}`}>
                       <h3 className="font-semibold text-lg hover:text-primary transition">
                         {recording.title || 'Untitled Recording'}
                       </h3>
@@ -142,7 +142,7 @@ export default function SubjectDetailPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Link to={`/app/recordings/${recording.id}`}>
+                    <Link to={`/recordings/${recording.id}`}>
                       <Button variant="outline" size="sm">
                         View
                       </Button>

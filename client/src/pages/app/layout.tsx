@@ -66,19 +66,19 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <NavLink to="/app" icon={<LayoutDashboard size={20} />}>
+          <NavLink to="/" icon={<LayoutDashboard size={20} />}>
             Dashboard
           </NavLink>
-          <NavLink to="/app/subjects" icon={<Folder size={20} />}>
+          <NavLink to="/subjects" icon={<Folder size={20} />}>
             Subjects
           </NavLink>
-          <NavLink to="/app/record" icon={<Mic size={20} />}>
+          <NavLink to="/record" icon={<Mic size={20} />}>
             Record
           </NavLink>
         </nav>
 
         <div className="p-4 border-t border-border space-y-1">
-          <NavLink to="/app/settings" icon={<Settings size={20} />}>
+          <NavLink to="/settings" icon={<Settings size={20} />}>
             Settings
           </NavLink>
           <button

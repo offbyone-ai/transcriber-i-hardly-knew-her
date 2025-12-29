@@ -20,17 +20,26 @@ export default function SignupPage() {
     setLoading(true)
 
     try {
-      const result = await signUp.email({
-        name,
-        email,
-        password,
-      })
+      const result = await signUp.email(
+        {
+          name,
+          email,
+          password,
+        },
+        {
+          onSuccess: () => {
+            // Navigate after successful signup
+            navigate('/')
+          },
+          onError: (ctx) => {
+            setError(ctx.error.message || 'Signup failed')
+          },
+        }
+      )
 
-      if (result.error) {
-        setError(result.error.message || 'Signup failed')
-      } else {
-        // Navigate to root - basename '/app' will make this /app/
-        navigate('/')
+      // Handle legacy error format if onError callback didn't fire
+      if (result?.error && result.error.message) {
+        setError(result.error.message)
       }
     } catch (err) {
       setError('An unexpected error occurred')

@@ -286,7 +286,7 @@ export default function RecordPage() {
       await addRecording(recording)
       
       // Navigate to the recording detail page
-      navigate(`/app/recordings/${recording.id}`)
+      navigate(`/recordings/${recording.id}`)
     } catch (err) {
       console.error('Failed to save recording:', err)
       setError('Failed to save recording')
@@ -458,7 +458,7 @@ export default function RecordPage() {
       await addRecording(recording)
       
       // Navigate to the recording detail page
-      navigate(`/app/recordings/${recording.id}`)
+      navigate(`/recordings/${recording.id}`)
     } catch (err) {
       console.error('Failed to save uploaded file:', err)
       setError('Failed to save uploaded file')
