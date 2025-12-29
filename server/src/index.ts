@@ -40,29 +40,21 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// Serve landing page at root
-app.get('/', serveStatic({ path: './landing/index.html' }))
-
-// Serve landing page assets (CSS, images, etc.)
-app.use('/landing/*', serveStatic({ root: './' }))
-
-// Serve React app at /app and /app/
-app.get('/app', serveStatic({ path: './static/index.html' }))
-app.get('/app/', serveStatic({ path: './static/index.html' }))
+// Serve React app at root
+app.get('/', serveStatic({ path: './static/index.html' }))
 
 // Serve React app static assets with proper MIME types
 // Must use app.get to ensure it runs before the catch-all
-app.get('/app/assets/*', serveStatic({ 
-  root: './static',
-  rewriteRequestPath: (path) => path.replace(/^\/app/, '')
+app.get('/assets/*', serveStatic({ 
+  root: './static'
 }))
 
 // Serve vite.svg and other root static files
-app.get('/app/vite.svg', serveStatic({ path: './static/vite.svg' }))
+app.get('/vite.svg', serveStatic({ path: './static/vite.svg' }))
 
-// SPA fallback: serve index.html for all other /app/* routes (client-side routing)
+// SPA fallback: serve index.html for all other routes (client-side routing)
 // This must come LAST to avoid catching asset requests
-app.get('/app/*', serveStatic({ path: './static/index.html' }))
+app.get('/*', serveStatic({ path: './static/index.html' }))
 
 export default app
 
