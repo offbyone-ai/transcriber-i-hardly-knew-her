@@ -1,6 +1,37 @@
 // Web Worker for running Whisper transcription with transformers.js
 // This avoids blocking the main thread and properly handles WASM initialization
 
+// Global error handler for uncaught errors in worker
+self.addEventListener('error', (event) => {
+  console.error('[Worker] Uncaught error:', event.error)
+  console.error('[Worker] Error message:', event.message)
+  console.error('[Worker] Error filename:', event.filename)
+  console.error('[Worker] Error lineno:', event.lineno)
+  console.error('[Worker] Error colno:', event.colno)
+  
+  // Send error to main thread
+  self.postMessage({
+    status: 'error',
+    error: event.error instanceof Error ? event.error.message : String(event.message),
+    details: {
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+    }
+  })
+})
+
+// Global handler for unhandled promise rejections
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('[Worker] Unhandled promise rejection:', event.reason)
+  
+  // Send error to main thread
+  self.postMessage({
+    status: 'error',
+    error: event.reason instanceof Error ? event.reason.message : String(event.reason),
+  })
+})
+
 // Types only - no runtime import
 type AutomaticSpeechRecognitionPipeline = any
 
