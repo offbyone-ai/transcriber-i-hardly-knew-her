@@ -1,14 +1,37 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { logger } from 'hono/logger'
 import { serveStatic } from 'hono/bun'
 import type { ApiResponse } from 'shared/dist'
 import { auth } from './auth'
 
 const app = new Hono()
 
-// Logger middleware - logs all requests with timing
-app.use('*', logger())
+// Custom logger middleware with microsecond precision
+app.use('*', async (c, next) => {
+  const start = performance.now()
+  const method = c.req.method
+  const path = c.req.path
+  
+  console.log(`<-- ${method} ${path}`)
+  
+  await next()
+  
+  const end = performance.now()
+  const elapsed = end - start
+  const status = c.res.status
+  
+  // Format timing with appropriate precision
+  let timeStr: string
+  if (elapsed < 1) {
+    timeStr = `${(elapsed * 1000).toFixed(0)}μs`
+  } else if (elapsed < 1000) {
+    timeStr = `${elapsed.toFixed(2)}ms`
+  } else {
+    timeStr = `${(elapsed / 1000).toFixed(2)}s`
+  }
+  
+  console.log(`--> ${method} ${path} ${status} ${timeStr}`)
+})
 
 // CORS configuration - only for API routes
 app.use('/api/*', cors({
@@ -43,25 +66,32 @@ app.get('/health', (c) => {
 // Serve landing page at root
 app.get('/', serveStatic({ path: './landing/index.html' }))
 
-// Serve landing page assets (CSS, images, etc.)
-app.get('/landing/*', serveStatic({ 
+// Serve landing page assets (CSS, images, etc.) from /landing/ directory
+// This must come before any catch-all routes
+app.use('/landing/*', serveStatic({ 
   root: './',
-  // Don't rewrite path - Hono will look for ./landing/styles.css correctly
 }))
 
-// Serve React app at /app and /app/
-app.get('/app', serveStatic({ path: './static/index.html' }))
-app.get('/app/', serveStatic({ path: './static/index.html' }))
-
-// Serve React app static assets with proper MIME types
-// Must use app.get to ensure it runs before the catch-all
-app.get('/app/assets/*', serveStatic({ 
+// Serve React app static assets (must come before SPA routes)
+// Vite builds assets with /app prefix, so we need to handle /app/assets/*
+app.use('/app/assets/*', serveStatic({ 
   root: './static',
-  rewriteRequestPath: (path) => path.replace(/^\/app/, '')
+  rewriteRequestPath: (path) => path.replace(/^\/app/, ''),
 }))
 
-// Serve vite.svg and other root static files
+// Also serve top-level /assets/* for backwards compatibility
+app.use('/assets/*', serveStatic({ 
+  root: './static',
+}))
+
+// Serve vite.svg at both /app/vite.svg (used by app) and /vite.svg
 app.get('/app/vite.svg', serveStatic({ path: './static/vite.svg' }))
+app.get('/vite.svg', serveStatic({ path: './static/vite.svg' }))
+
+// Serve React app at /app, /login, /signup routes (these need the SPA)
+app.get('/app', serveStatic({ path: './static/index.html' }))
+app.get('/login', serveStatic({ path: './static/index.html' }))
+app.get('/signup', serveStatic({ path: './static/index.html' }))
 
 // SPA fallback: serve index.html for all other /app/* routes (client-side routing)
 // This must come LAST to avoid catching asset requests
