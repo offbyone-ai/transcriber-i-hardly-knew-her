@@ -77,14 +77,25 @@ app.use('/landing/*', serveStatic({
 
 // Serve React app static assets (must come before SPA routes)
 // Vite builds assets with /app prefix, so we need to handle /app/assets/*
+// Note: .ts files in assets are actually compiled JS (Vite worker outputs)
 app.use('/app/assets/*', serveStatic({ 
   root: './static',
   rewriteRequestPath: (path) => path.replace(/^\/app/, ''),
+  mimes: {
+    ts: 'application/javascript',
+    js: 'application/javascript',
+    mjs: 'application/javascript',
+  }
 }))
 
 // Also serve top-level /assets/* for backwards compatibility
 app.use('/assets/*', serveStatic({ 
   root: './static',
+  mimes: {
+    ts: 'application/javascript',
+    js: 'application/javascript',
+    mjs: 'application/javascript',
+  }
 }))
 
 // Serve vite.svg at both /app/vite.svg (used by app) and /vite.svg
