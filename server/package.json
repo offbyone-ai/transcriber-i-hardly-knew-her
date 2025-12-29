@@ -7,7 +7,10 @@
     "build": "bun build --compile --minify --sourcemap --bytecode --outfile transcriber ./src/index.ts",
     "build:types": "tsc",
     "dev": "bun --watch run src/index.ts",
-    "start": "./transcriber"
+    "start": "./transcriber",
+    "migrate": "bun run src/migrate.ts run",
+    "migrate:status": "bun run src/migrate.ts status",
+    "migrate:create": "bun run src/migrate.ts create"
   },
   "dependencies": {
     "better-auth": "^1.4.9",
