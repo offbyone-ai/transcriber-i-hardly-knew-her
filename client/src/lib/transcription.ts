@@ -26,9 +26,11 @@ let worker: Worker | null = null
 function getWorker(): Worker {
   if (!worker) {
     console.log('[Transcription] Creating Web Worker for transformers.js')
-    const workerUrl = new URL('../workers/transcription.worker.ts', import.meta.url)
-    console.log('[Transcription] Worker URL:', workerUrl.href)
-    worker = new Worker(workerUrl, { type: 'module' })
+    // Import worker directly - Vite will handle bundling
+    worker = new Worker(new URL('../workers/transcription.worker.js', import.meta.url), { 
+      type: 'module' 
+    })
+    console.log('[Transcription] Worker URL:', worker)
     
     // Add global error handler for worker
     worker.onerror = (error) => {

@@ -4,6 +4,7 @@ import { ArrowLeft, Download, Trash2, Play, Pause, Loader2 } from 'lucide-react'
 import { db, deleteRecording, addTranscription } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { useAlert } from '@/components/alert-provider'
 import { useSession } from '@/lib/auth-client'
 import { getPreferredModel } from '@/lib/model-manager'
 import { transcribeAudio, type TranscriptionProgress } from '@/lib/transcription'
@@ -13,6 +14,7 @@ export default function RecordingDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { data: session } = useSession()
+  const { showAlert } = useAlert()
   const audioRef = useRef<HTMLAudioElement>(null)
   
   const [recording, setRecording] = useState<Recording | null>(null)
@@ -120,7 +122,10 @@ export default function RecordingDetailPage() {
     } catch (error) {
       console.error('Transcription failed:', error)
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      alert(`Transcription failed: ${errorMsg}\n\nCheck the browser console for more details.`)
+      showAlert({
+        title: 'Transcription Failed',
+        description: `${errorMsg}\n\nCheck the browser console for more details.`
+      })
     } finally {
       setIsTranscribing(false)
       setTranscriptionProgress(null)

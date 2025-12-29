@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from './components/theme-provider'
+import { AlertProvider } from './components/alert-provider'
 import './index.css'
 
 // Import pages
@@ -59,7 +60,9 @@ const router = createBrowserRouter([
 function App() {
   return (
     <ThemeProvider defaultMode="light" defaultPreset="default" modeStorageKey="transcriber-theme-mode" presetStorageKey="transcriber-theme-preset">
-      <RouterProvider router={router} />
+      <AlertProvider>
+        <RouterProvider router={router} />
+      </AlertProvider>
     </ThemeProvider>
   )
 }

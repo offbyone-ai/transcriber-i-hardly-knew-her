@@ -32,18 +32,22 @@ self.addEventListener('unhandledrejection', (event) => {
   })
 })
 
-// Types only - no runtime import
-type AutomaticSpeechRecognitionPipeline = any
-
-// Singleton pattern to ensure model is only loaded once
+/**
+ * Singleton pattern to ensure model is only loaded once
+ */
 class WhisperPipeline {
-  static instance: AutomaticSpeechRecognitionPipeline | null = null
-  static modelName: string = 'Xenova/whisper-base.en'
+  /** @type {any | null} */
+  static instance = null
+  /** @type {string} */
+  static modelName = 'Xenova/whisper-base.en'
 
-  static async getInstance(
-    modelName: string,
-    progressCallback?: (progress: any) => void
-  ): Promise<AutomaticSpeechRecognitionPipeline> {
+  /**
+   * Get or create the transcription pipeline instance
+   * @param {string} modelName - The model to load
+   * @param {Function} [progressCallback] - Optional progress callback
+   * @returns {Promise<any>}
+   */
+  static async getInstance(modelName, progressCallback) {
     // If model changed, reset instance
     if (this.modelName !== modelName) {
       this.instance = null
@@ -78,7 +82,7 @@ class WhisperPipeline {
           'automatic-speech-recognition',
           modelName,
           { progress_callback: progressCallback }
-        ) as AutomaticSpeechRecognitionPipeline
+        )
         
         console.log('[Worker] Pipeline created successfully')
       } catch (error) {
@@ -93,9 +97,13 @@ class WhisperPipeline {
   }
 }
 
-// Map model names to Hugging Face model IDs
-function getModelId(modelName: string): string {
-  const modelMap: Record<string, string> = {
+/**
+ * Map model names to Hugging Face model IDs
+ * @param {string} modelName - Short model name
+ * @returns {string} Full Hugging Face model ID
+ */
+function getModelId(modelName) {
+  const modelMap = {
     'tiny': 'Xenova/whisper-tiny',
     'tiny.en': 'Xenova/whisper-tiny.en',
     'base': 'Xenova/whisper-base',
@@ -106,17 +114,9 @@ function getModelId(modelName: string): string {
   return modelMap[modelName] || 'Xenova/whisper-base.en'
 }
 
-// Message types from main thread
-interface TranscribeMessage {
-  type: 'transcribe'
-  audioData: Float32Array
-  modelName: string
-  language?: string
-}
-
 // Listen for messages from main thread
-self.addEventListener('message', async (event: MessageEvent) => {
-  const message = event.data as TranscribeMessage
+self.addEventListener('message', async (event) => {
+  const message = event.data
 
   if (message.type === 'transcribe') {
     try {
