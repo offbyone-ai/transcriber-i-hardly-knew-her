@@ -147,7 +147,7 @@ self.addEventListener('message', async (event) => {
       // Perform transcription
       const result = await transcriber(message.audioData, {
         language: message.language,
-        return_timestamps: 'word',
+        return_timestamps: true, // Use segment-level timestamps (sentences/phrases) instead of word-level
         chunk_length_s: 30,
         stride_length_s: 5,
       })

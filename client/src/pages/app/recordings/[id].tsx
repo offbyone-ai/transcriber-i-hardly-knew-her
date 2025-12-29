@@ -154,6 +154,7 @@ export default function RecordingDetailPage() {
         segments: result.segments,
         language: result.language,
         modelUsed: preferredModel,
+        processingTimeMs: result.processingTimeMs,
         createdAt: new Date(),
       }
 
@@ -374,6 +375,9 @@ export default function RecordingDetailPage() {
                 <span>Language: {transcription.language || 'auto'}</span>
                 <span>Model: {transcription.modelUsed}</span>
                 <span>Created: {new Date(transcription.createdAt).toLocaleDateString()}</span>
+                {transcription.processingTimeMs && (
+                  <span>Processing: {(transcription.processingTimeMs / 1000).toFixed(1)}s</span>
+                )}
               </div>
               
               <div className="prose prose-sm max-w-none">

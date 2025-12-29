@@ -67,6 +67,7 @@ export type Transcription = {
   segments: TranscriptionSegment[]
   language: string
   modelUsed: string
+  processingTimeMs?: number // time taken to transcribe in milliseconds
   createdAt: Date
   userId: string
 }

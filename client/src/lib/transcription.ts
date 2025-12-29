@@ -12,6 +12,7 @@ export type TranscriptionResult = {
   text: string
   segments: TranscriptionSegment[]
   language: string
+  processingTimeMs: number
 }
 
 export type TranscriptionProgress = {
@@ -50,6 +51,8 @@ export async function transcribeAudio(
   task: TranscriptionTask,
   onProgress?: (progress: TranscriptionProgress) => void
 ): Promise<TranscriptionResult> {
+  
+  const startTime = performance.now() // Start timing
   
   console.log('Starting transcription with model:', task.modelName)
   console.log('[Transcription] Using Web Worker approach')
@@ -142,6 +145,9 @@ export async function transcribeAudio(
             clearTimeout(workerTimeout)
             transcriptionWorker.removeEventListener('message', handleMessage)
             
+            const endTime = performance.now()
+            const processingTimeMs = Math.round(endTime - startTime)
+            
             // Format the result
             const text = result.text || ''
             const segments: TranscriptionSegment[] = []
@@ -166,6 +172,7 @@ export async function transcribeAudio(
               text,
               segments,
               language: task.language || 'en',
+              processingTimeMs,
             })
             break
 
