@@ -59,6 +59,7 @@ export default function RecordingDetailPage() {
       setAudioUrl(url)
       
       // Set initial duration from recording data
+      console.log('[Recording Detail] Recording duration from DB:', recordingData.duration)
       setDuration(recordingData.duration)
 
       // Load transcription if exists
@@ -217,6 +218,7 @@ export default function RecordingDetailPage() {
   function handleLoadedMetadata() {
     if (audioRef.current && isFinite(audioRef.current.duration)) {
       // Update duration from actual audio metadata if available
+      console.log('[Recording Detail] Audio element duration:', audioRef.current.duration)
       setDuration(audioRef.current.duration)
     }
   }
