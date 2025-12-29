@@ -74,9 +74,29 @@ export async function transcribeAudio(
       const transcriptionWorker = getWorker()
       console.log('[Transcription] Got worker instance:', transcriptionWorker)
 
+      // Set up timeout to catch worker failures
+      let hasReceivedMessage = false
+      const workerTimeout = setTimeout(() => {
+        if (!hasReceivedMessage) {
+          console.error('[Transcription] Worker timeout - no response received')
+          transcriptionWorker.removeEventListener('message', handleMessage)
+          
+          onProgress?.({
+            status: 'error',
+            progress: 0,
+            message: 'Worker failed to respond. Please refresh and try again.',
+          })
+          
+          reject(new Error('Worker failed to initialize. The worker may have crashed during startup.'))
+        }
+      }, 10000) // 10 second timeout
+
       // Set up message handler
       const handleMessage = (event: MessageEvent) => {
-        const { status, file, progress, result, error } = event.data
+        hasReceivedMessage = true
+        clearTimeout(workerTimeout)
+        
+        const { status, file, progress, result, error, details } = event.data
 
         switch (status) {
           case 'initialized':
@@ -117,6 +137,7 @@ export async function transcribeAudio(
 
           case 'complete':
             console.log('Transcription complete!', result)
+            clearTimeout(workerTimeout)
             transcriptionWorker.removeEventListener('message', handleMessage)
             
             // Format the result
@@ -148,15 +169,20 @@ export async function transcribeAudio(
 
           case 'error':
             console.error('Worker error:', error)
+            if (details) {
+              console.error('Error details:', details)
+            }
+            clearTimeout(workerTimeout)
             transcriptionWorker.removeEventListener('message', handleMessage)
             
+            const errorMsg = error || 'Unknown worker error'
             onProgress?.({
               status: 'error',
               progress: 0,
-              message: `Transcription failed: ${error}`,
+              message: `Failed: ${errorMsg}`,
             })
             
-            reject(new Error(error))
+            reject(new Error(errorMsg))
             break
         }
       }
