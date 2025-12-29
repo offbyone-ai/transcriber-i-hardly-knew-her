@@ -47,14 +47,8 @@ app.get('/app', serveStatic({ path: './static/index.html' }))
 app.get('/app/', serveStatic({ path: './static/index.html' }))
 
 // Serve React app static assets (JS, CSS, images, etc.)
-// This middleware runs before the catch-all route below
-app.use('/app/*', serveStatic({ 
-  root: './static',
-  rewriteRequestPath: (path) => path.replace(/^\/app/, '')
-}))
-
-// SPA fallback: serve index.html for all other /app/* routes (client-side routing)
-app.get('/app/*', serveStatic({ path: './static/index.html' }))
+// For files under /app/*, serve from ./static/*
+app.get('/app/*', serveStatic({ root: './static', rewriteRequestPath: (path) => path.replace(/^\/app/, '') }))
 
 export default app
 
