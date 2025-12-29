@@ -29,6 +29,15 @@ function getWorker(): Worker {
     const workerUrl = new URL('../workers/transcription.worker.ts', import.meta.url)
     console.log('[Transcription] Worker URL:', workerUrl.href)
     worker = new Worker(workerUrl, { type: 'module' })
+    
+    // Add global error handler for worker
+    worker.onerror = (error) => {
+      console.error('[Transcription] Worker error event:', error)
+      console.error('[Transcription] Error message:', error.message)
+      console.error('[Transcription] Error filename:', error.filename)
+      console.error('[Transcription] Error lineno:', error.lineno)
+    }
+    
     console.log('[Transcription] Web Worker created successfully')
   }
   return worker
@@ -156,12 +165,14 @@ export async function transcribeAudio(
       transcriptionWorker.addEventListener('message', handleMessage)
 
       // Send transcription request to worker
+      console.log('[Transcription] Posting message to worker with audio data length:', audioData.length)
       transcriptionWorker.postMessage({
         type: 'transcribe',
         audioData,
         modelName: task.modelName,
         language: task.language,
       })
+      console.log('[Transcription] Message posted to worker successfully')
 
     } catch (error) {
       console.error('=== TRANSCRIPTION ERROR ===')

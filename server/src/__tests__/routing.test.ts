@@ -143,7 +143,7 @@ describe("Routing", () => {
     
     test("GET /app/assets/* paths should serve JS files, not HTML", async () => {
       // Test with a known JS file from the build
-      const res = await app.request("/app/assets/index-CHoz22pY.js")
+      const res = await app.request("/app/assets/index-DFzvB91U.js")
       
       if (res.status === 200) {
         const contentType = res.headers.get("content-type")

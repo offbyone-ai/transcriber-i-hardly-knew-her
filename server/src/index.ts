@@ -33,6 +33,19 @@ app.use('*', async (c, next) => {
   console.log(`--> ${method} ${path} ${status} ${timeStr}`)
 })
 
+// Security headers required for SharedArrayBuffer and WASM (used by transformers.js)
+// These must be set on HTML pages, not assets
+app.use('*', async (c, next) => {
+  await next()
+  
+  // Only add these headers to HTML responses (not assets)
+  const contentType = c.res.headers.get('content-type')
+  if (contentType && contentType.includes('text/html')) {
+    c.res.headers.set('Cross-Origin-Embedder-Policy', 'require-corp')
+    c.res.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
+  }
+})
+
 // CORS configuration - only for API routes
 app.use('/api/*', cors({
   origin: (origin) => origin || 'http://localhost:5173',
