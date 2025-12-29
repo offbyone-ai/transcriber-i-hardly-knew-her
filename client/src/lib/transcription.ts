@@ -151,7 +151,7 @@ export async function transcribeAudio(
                 segments.push({
                   start: chunk.timestamp[0] || 0,
                   end: chunk.timestamp[1] || 0,
-                  text: chunk.text,
+                  text: chunk.text.trim(),
                 })
               }
             }

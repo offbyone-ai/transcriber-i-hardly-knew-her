@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Download, Trash2, Play, Pause, Loader2 } from 'lucide-react'
-import { db, deleteRecording, addTranscription } from '@/lib/db'
+import { db, deleteRecording, addTranscription, updateRecordingSubject } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAlert } from '@/components/alert-provider'
 import { useSession } from '@/lib/auth-client'
 import { getPreferredModel } from '@/lib/model-manager'
 import { transcribeAudio, type TranscriptionProgress } from '@/lib/transcription'
-import type { Recording, Transcription } from '@shared/types'
+import type { Recording, Transcription, Subject } from '@shared/types'
 
 export default function RecordingDetailPage() {
   const { id } = useParams()
@@ -26,9 +26,12 @@ export default function RecordingDetailPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [transcriptionProgress, setTranscriptionProgress] = useState<TranscriptionProgress | null>(null)
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [isMoving, setIsMoving] = useState(false)
 
   useEffect(() => {
     loadRecordingData()
+    loadSubjects()
     
     return () => {
       // Cleanup audio URL
@@ -65,6 +68,43 @@ export default function RecordingDetailPage() {
       console.error('Failed to load recording:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function loadSubjects() {
+    if (!session?.user?.id) return
+    
+    try {
+      const userSubjects = await db.subjects
+        .where('userId')
+        .equals(session.user.id)
+        .reverse()
+        .sortBy('createdAt')
+      setSubjects(userSubjects)
+    } catch (error) {
+      console.error('Failed to load subjects:', error)
+    }
+  }
+
+  async function handleMove(newSubjectId: string) {
+    if (!id) return
+    
+    setIsMoving(true)
+    try {
+      await updateRecordingSubject(id, newSubjectId || undefined)
+      await loadRecordingData() // Reload to show updated subject
+      showAlert({
+        title: 'Recording Moved',
+        description: 'Recording successfully moved to new subject.'
+      })
+    } catch (error) {
+      console.error('Failed to move recording:', error)
+      showAlert({
+        title: 'Move Failed',
+        description: 'Failed to move recording. Please try again.'
+      })
+    } finally {
+      setIsMoving(false)
     }
   }
 
@@ -175,6 +215,10 @@ export default function RecordingDetailPage() {
   }
 
   function formatTime(seconds: number) {
+    // Handle NaN, Infinity, and negative numbers
+    if (!isFinite(seconds) || seconds < 0) {
+      return '0:00'
+    }
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${String(secs).padStart(2, '0')}`
@@ -207,9 +251,28 @@ export default function RecordingDetailPage() {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold">{recording.title || 'Untitled Recording'}</h1>
-              <p className="text-sm text-muted-foreground mt-2">
-                Recorded on {new Date(recording.createdAt).toLocaleDateString()} • {formatTime(recording.duration)} • {(recording.fileSize / 1024 / 1024).toFixed(2)} MB
-              </p>
+              <div className="flex flex-col gap-2 mt-2">
+                <p className="text-sm text-muted-foreground">
+                  Recorded on {new Date(recording.createdAt).toLocaleDateString()} • {formatTime(recording.duration)} • {(recording.fileSize / 1024 / 1024).toFixed(2)} MB
+                </p>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Subject:</span>
+                  <select
+                    value={recording.subjectId || ''}
+                    onChange={(e) => handleMove(e.target.value)}
+                    disabled={isMoving}
+                    className="px-2 py-1 bg-background border border-input rounded text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 transition-colors hover:bg-accent"
+                  >
+                    <option value="">No Subject</option>
+                    {subjects.map((subject) => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </option>
+                    ))}
+                  </select>
+                  {isMoving && <span className="text-xs text-muted-foreground">Moving...</span>}
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={handleDownload}>
@@ -254,7 +317,7 @@ export default function RecordingDetailPage() {
               </div>
               <div className="flex justify-between text-xs text-muted-foreground mt-1">
                 <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+                <span>{formatTime(duration > 0 ? duration : recording.duration)}</span>
               </div>
             </div>
           </div>
@@ -331,11 +394,8 @@ export default function RecordingDetailPage() {
           ) : (
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">
-                No transcription available yet.
+                No transcription available yet. Click "Start Transcription" above to begin.
               </p>
-              <Button>
-                Start Transcription
-              </Button>
             </div>
           )}
         </Card>

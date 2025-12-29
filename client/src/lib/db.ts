@@ -108,6 +108,10 @@ export async function deleteRecording(recordingId: string) {
   return await db.recordings.delete(recordingId)
 }
 
+export async function updateRecordingSubject(recordingId: string, newSubjectId: string | undefined) {
+  return await db.recordings.update(recordingId, { subjectId: newSubjectId })
+}
+
 // Model management functions
 export async function saveModel(name: WhisperModel, data: ArrayBuffer) {
   return await db.models.put({

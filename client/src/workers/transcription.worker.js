@@ -158,7 +158,7 @@ self.addEventListener('message', async (event) => {
       self.postMessage({
         status: 'complete',
         result: {
-          text: output.text,
+          text: output.text.trim(),
           chunks: output.chunks,
         },
       })
