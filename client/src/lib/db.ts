@@ -50,7 +50,56 @@ class TranscriberDB extends Dexie {
         }
       })
     })
+    
+    // Version 4: Fix duration for existing recordings
+    this.version(4).stores({
+      subjects: 'id, userId, name, createdAt',
+      recordings: 'id, subjectId, userId, createdAt, title, source',
+      transcriptions: 'id, recordingId, userId',
+      models: 'name, downloadedAt',
+    }).upgrade(async tx => {
+      // Get all recordings with missing or zero duration
+      const recordings = await tx.table('recordings').toArray()
+      const recordingsToFix = recordings.filter(r => !r.duration || r.duration === 0)
+      
+      console.log(`[DB Migration v4] Found ${recordingsToFix.length} recordings to fix duration`)
+      
+      // Fix each recording's duration by reading audio metadata
+      for (const recording of recordingsToFix) {
+        try {
+          const duration = await getAudioDuration(recording.audioBlob)
+          await tx.table('recordings').update(recording.id, { duration })
+          console.log(`[DB Migration v4] Fixed duration for recording ${recording.id}: ${duration}s`)
+        } catch (error) {
+          console.error(`[DB Migration v4] Failed to fix duration for recording ${recording.id}:`, error)
+        }
+      }
+    })
   }
+}
+
+// Helper function to get audio duration from blob
+function getAudioDuration(blob: Blob): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio()
+    const url = URL.createObjectURL(blob)
+    
+    audio.addEventListener('loadedmetadata', () => {
+      URL.revokeObjectURL(url)
+      if (isFinite(audio.duration)) {
+        resolve(audio.duration)
+      } else {
+        reject(new Error('Invalid audio duration'))
+      }
+    })
+    
+    audio.addEventListener('error', () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Failed to load audio metadata'))
+    })
+    
+    audio.src = url
+  })
 }
 
 export const db = new TranscriberDB()
