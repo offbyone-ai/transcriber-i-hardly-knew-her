@@ -236,7 +236,7 @@ The @xenova/transformers package (deprecated May 2024) had WASM initialization i
 ---
 
 ## Phase 5: Docker Deployment & Production
-**Status:** ✅ Docker Complete: 2025-12-28 | 🚧 Production Deployment: In Progress
+**Status:** ✅ Docker & Coolify Complete: 2025-12-28 | 🚧 CI/CD & Testing: In Progress
 
 ### Docker Deployment ✅ COMPLETED
 
@@ -251,9 +251,9 @@ The @xenova/transformers package (deprecated May 2024) had WASM initialization i
   - Static asset serving from server
   - Asset caching headers
 - ✅ Docker Compose configuration
-  - Server service with health checks
-  - Client static file serving integrated
-  - Environment variable management (.env.docker)
+  - Production: `docker-compose.yml` (resource limits, required secrets)
+  - Development: `docker-compose.dev.yml` (relaxed settings)
+  - Coolify: `docker-compose.coolify.yml` (automated backups)
   - Volume configuration for SQLite persistence
 - ✅ Image optimization
   - Multi-stage build pattern
@@ -268,27 +268,83 @@ The @xenova/transformers package (deprecated May 2024) had WASM initialization i
 - `--bytecode` - Faster execution
 - Result: 69MB server executable + 560KB client = ~120MB total Docker image
 
+**SQLite Optimizations:**
+- ✅ WAL mode for better concurrency
+- ✅ Performance pragmas (10MB cache, 64MB mmap, NORMAL sync)
+- ✅ Automatic database directory creation
+- ✅ Environment-based path configuration
+
 **Files Created:**
 - `Dockerfile` - Multi-stage build with Bun optimization
-- `docker-compose.yml` - Complete service orchestration
+- `docker-compose.yml` - Production deployment
+- `docker-compose.dev.yml` - Development deployment
+- `docker-compose.coolify.yml` - Coolify deployment with backup sidecar
 - `.dockerignore` - Build optimization
 - `.env.docker.example` - Environment template
 - `DOCKER.md` - Quick start guide
 - `docs/DEPLOYMENT.md` - Complete deployment documentation
+- `docs/DOCKER_SUMMARY.md` - Docker implementation summary
+- `docs/VOLUMES.md` - Volume management guide (500+ lines)
+- `docs/COOLIFY.md` - Complete Coolify deployment guide (600+ lines)
+
+### Database Backup System ✅ COMPLETED
+
+**Automated Backup Features:**
+- ✅ Daily automated backups via sidecar container
+- ✅ Configurable retention policy (default: 7 days)
+- ✅ Manual backup script for host execution
+- ✅ Container-friendly backup script for sidecar
+- ✅ Restore script with safety confirmations
+- ✅ Persistent backup volume
+
+**Backup Scripts:**
+- `scripts/backup-db.sh` - Host-based manual backups
+- `scripts/backup-db-container.sh` - Container-based automated backups
+- `scripts/restore-db.sh` - Database restore with safety checks
+
+**Backup Strategy:**
+- Uses SQLite's atomic backup/copy operations
+- WAL mode ensures consistency
+- Automatic cleanup of old backups
+- Separate volume for backup storage
+- Health monitoring and logging
+
+### Coolify Deployment ✅ COMPLETED
+
+**Production-Ready Coolify Integration:**
+- ✅ Dedicated `docker-compose.coolify.yml` configuration
+- ✅ Automated backup sidecar container
+- ✅ Complete deployment documentation (600+ lines)
+- ✅ Environment variable configuration guide
+- ✅ SSL/HTTPS setup instructions
+- ✅ Health check integration
+- ✅ Resource limits configured
+- ✅ Volume management documentation
+- ✅ Troubleshooting guide
+- ✅ Monitoring and alerts setup
+- ✅ Backup/restore procedures
+- ✅ Scaling considerations
+
+**Coolify Features:**
+- Docker Compose deployment
+- Automatic SSL via Let's Encrypt
+- Built-in monitoring and alerts
+- Volume persistence across deployments
+- One-click restart and rollback
+- Environment variable management
+- Automated daily database backups
 
 **Build & Deployment:**
 - ✅ Local build tested and working
 - ✅ Build scripts created (build:single)
 - ✅ Health check endpoint implemented
 - ✅ Deployment documentation complete
+- ✅ Coolify-specific configuration and documentation
+- ✅ Automated backup system implemented
 - [ ] CI/CD pipeline setup (GitHub Actions)
   - Build Docker image
   - Run tests before deployment
   - Push to registry
-- [ ] Production deployment guide
-  - Reverse proxy setup (Nginx/Caddy)
-  - SSL/TLS configuration
-  - Domain configuration
 
 ### Testing & Quality Assurance
 
@@ -451,6 +507,11 @@ For detailed documentation, see:
 - [docs/COMPONENTS.md](./docs/COMPONENTS.md) - UI components documentation
 - [docs/TRANSCRIPTION.md](./docs/TRANSCRIPTION.md) - Transcription system details
 - [docs/THEMES.md](./docs/THEMES.md) - Theme system and presets
+- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - Production deployment guide
+- [docs/COOLIFY.md](./docs/COOLIFY.md) - Coolify deployment guide with automated backups
+- [docs/VOLUMES.md](./docs/VOLUMES.md) - Docker volume management
+- [docs/DOCKER_SUMMARY.md](./docs/DOCKER_SUMMARY.md) - Docker implementation summary
+- [DOCKER.md](./DOCKER.md) - Docker quick start
 - [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md) - Manual testing procedures
 - [TRANSCRIPTION_SOLUTION.md](./TRANSCRIPTION_SOLUTION.md) - Technical implementation details
 
@@ -464,9 +525,9 @@ For detailed documentation, see:
 **UI/UX Polish:** Production-ready with responsive design  
 **Performance:** Optimized with Web Worker for non-blocking transcription  
 
-**Next Milestone:** Docker deployment with Bun executable optimization
+**Next Milestone:** CI/CD pipeline and comprehensive testing expansion
 
 ---
 
 **Last Updated:** 2025-12-28  
-**Project Status:** Active Development
+**Project Status:** Production-Ready - Docker & Coolify Deployment Complete

@@ -1,0 +1,36 @@
+services:
+  transcriber:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SERVER_URL: http://localhost:3000
+    image: transcriber-app:dev
+    container_name: transcriber-app-dev
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-secret-change-me-min-32-chars-long}
+      BETTER_AUTH_URL: http://localhost:3000
+      DATABASE_PATH: /app/data/auth.db
+    volumes:
+      - transcriber-data-dev:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - transcriber-network-dev
+
+volumes:
+  transcriber-data-dev:
+    driver: local
+
+networks:
+  transcriber-network-dev:
+    driver: bridge
