@@ -17,18 +17,18 @@ test.describe('Transcriber App - Full Workflow', () => {
   })
 
   test('complete workflow: signup → create subject → record → transcribe', async ({ page }) => {
-    // Step 1: Load home page
-    await test.step('Load home page', async () => {
+    // Step 1: Load landing page
+    await test.step('Load landing page', async () => {
       await page.goto('/')
       await expect(page).toHaveTitle(/Transcriber/i)
-      console.log('✓ Home page loaded')
+      console.log('✓ Landing page loaded')
     })
 
     // Step 2: Sign up
     await test.step('Sign up new user', async () => {
-      // Navigate to signup page
+      // Navigate to signup page from landing page
       await page.click('text=Get Started')
-      await page.waitForURL('**/signup')
+      await page.waitForURL('**/app/signup')
       
       // Fill signup form
       await page.fill('input[id="email"]', testEmail)
@@ -164,7 +164,7 @@ test.describe('Transcriber App - Full Workflow', () => {
       const knownTestPassword = 'TestPassword123!'
       
       await page.click('text=Sign In')
-      await page.waitForURL('**/login')
+      await page.waitForURL('**/app/login')
       
       await page.fill('input[id="email"]', knownTestEmail)
       await page.fill('input[id="password"]', knownTestPassword)
@@ -186,7 +186,7 @@ test.describe('Transcriber App - Full Workflow', () => {
   // Test individual components
   test('can create and delete subject', async ({ page }) => {
     // First sign up/in
-    await page.goto('/signup')
+    await page.goto('/app/signup')
     await page.fill('input[id="email"]', testEmail)
     await page.fill('input[id="password"]', TEST_PASSWORD)
     await page.fill('input[id="name"]', 'Test User')
@@ -221,17 +221,26 @@ test.describe('Transcriber App - Full Workflow', () => {
   })
 })
 
-// Test to verify the app is accessible
-test('home page is accessible', async ({ page }) => {
+// Test to verify the landing page is accessible
+test('landing page is accessible', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveTitle(/Transcriber/i)
   
-  // Check for key navigation elements
+  // Check for key navigation elements on landing page
   const getStartedLink = page.locator('text=Get Started')
-  const signInLink = page.locator('text=Sign In')
   
   await expect(getStartedLink).toBeVisible()
-  await expect(signInLink).toBeVisible()
   
-  console.log('✓ Home page is accessible with all navigation elements')
+  console.log('✓ Landing page is accessible with navigation elements')
+})
+
+// Test to verify the React app is accessible at /app
+test('React app is accessible at /app', async ({ page }) => {
+  await page.goto('/app')
+  
+  // Should redirect to login or show app interface
+  // Wait for either login page or dashboard
+  await page.waitForURL(/\/(app\/)?(login|signup|dashboard)/, { timeout: 10000 })
+  
+  console.log('✓ React app at /app is accessible')
 })

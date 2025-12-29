@@ -42,10 +42,18 @@ app.get('/', serveStatic({ path: './landing/index.html' }))
 // Serve landing page assets (CSS, images, etc.)
 app.use('/landing/*', serveStatic({ root: './' }))
 
-// Serve React app static files under /app
-app.use('/app/*', serveStatic({ root: './static' }))
+// Serve React app at /app and /app/
+app.get('/app', serveStatic({ path: './static/index.html' }))
+app.get('/app/', serveStatic({ path: './static/index.html' }))
 
-// Fallback to React app index.html for client-side routing under /app
+// Serve React app static assets (JS, CSS, images, etc.)
+// This middleware runs before the catch-all route below
+app.use('/app/*', serveStatic({ 
+  root: './static',
+  rewriteRequestPath: (path) => path.replace(/^\/app/, '')
+}))
+
+// SPA fallback: serve index.html for all other /app/* routes (client-side routing)
 app.get('/app/*', serveStatic({ path: './static/index.html' }))
 
 export default app
