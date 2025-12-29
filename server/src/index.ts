@@ -44,8 +44,10 @@ app.get('/*', serveStatic({ path: './static/index.html' }))
 
 export default app
 
-// Start server when running as executable or in dev mode
-if (import.meta.main) {
+// Start server when running in dev mode (not compiled executable)
+// Note: When compiled with `bun build --compile`, Bun automatically starts
+// the server using the exported default app, so this block is skipped
+if (import.meta.main && !Bun.main.includes('transcriber')) {
   const port = process.env.PORT || 3000
   console.log(`🚀 Transcriber server starting on port ${port}`)
   

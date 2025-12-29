@@ -9,11 +9,25 @@ COPY client/package.json ./client/
 COPY server/package.json ./server/
 COPY shared/package.json ./shared/
 COPY turbo.json ./
-# Install dependencies with frozen lockfile
-RUN bun install --frozen-lockfile
 
-# Copy source code
-COPY . .
+# Copy source code needed for postinstall script
+# NOTE: Source is copied BEFORE bun install to support the postinstall script
+# which builds shared and server packages (required for workspace dependencies).
+# This changes the layer caching strategy slightly but is necessary for Coolify.
+# The postinstall script runs: turbo build --filter=shared --filter=server
+COPY tsconfig.json ./
+COPY shared/ ./shared/
+COPY server/src/ ./server/src/
+COPY server/tsconfig.json ./server/tsconfig.json
+
+# Install dependencies with frozen lockfile
+# Postinstall will build shared + server packages during this step
+RUN echo "Installing dependencies (postinstall will build shared + server)..." && \
+    bun install --frozen-lockfile && \
+    echo "Dependencies installed successfully!"
+
+# Copy remaining source code (client for final build)
+COPY client/ ./client/
 
 # Build argument for client API URL
 ARG VITE_SERVER_URL
@@ -22,6 +36,9 @@ ENV VITE_SERVER_URL=${VITE_SERVER_URL:-http://localhost:3000}
 # Build all packages and create standalone executable
 # This runs: turbo build -> copy client dist to server/static -> bun compile server
 RUN bun run build:single
+
+# Create data directory with proper permissions for runtime
+RUN mkdir -p /app/data && chmod 777 /app/data
 
 # Stage 2: Minimal runtime image with glibc
 FROM chainguard/glibc-dynamic:latest
@@ -34,18 +51,15 @@ COPY --from=build /app/server/transcriber transcriber
 # Copy static client files (client build output)
 COPY --from=build /app/server/static/ static/
 
-# Copy auth database schema/migrations if they exist
-# Note: SQLite database file (auth.db) will be created at runtime via volume
-COPY --from=build --chown=nonroot:nonroot /app/server/src/auth.ts ./src/auth.ts 2>/dev/null || true
+# Copy data directory with proper permissions
+COPY --from=build --chown=nonroot:nonroot /app/data/ data/
 
 # Set production environment
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Create directory for SQLite database with proper permissions
-USER root
-RUN mkdir -p /app/data && chown -R nonroot:nonroot /app/data
-USER nonroot
+# Note: SQLite database directory (/app/data) will be created by volume mount
+# The nonroot user (UID 65532) already exists in chainguard/glibc-dynamic
 
 # Expose port
 EXPOSE 3000
