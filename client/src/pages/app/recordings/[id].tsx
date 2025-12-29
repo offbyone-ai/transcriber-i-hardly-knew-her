@@ -57,6 +57,9 @@ export default function RecordingDetailPage() {
       // Create audio URL from blob
       const url = URL.createObjectURL(recordingData.audioBlob)
       setAudioUrl(url)
+      
+      // Set initial duration from recording data
+      setDuration(recordingData.duration)
 
       // Load transcription if exists
       const transcriptionData = await db.transcriptions
@@ -212,18 +215,18 @@ export default function RecordingDetailPage() {
   }
 
   function handleLoadedMetadata() {
-    if (audioRef.current) {
+    if (audioRef.current && isFinite(audioRef.current.duration)) {
+      // Update duration from actual audio metadata if available
       setDuration(audioRef.current.duration)
     }
   }
 
   function handleSeek(e: React.MouseEvent<HTMLDivElement>) {
-    if (!audioRef.current || !recording) return
+    if (!audioRef.current) return
 
     const rect = e.currentTarget.getBoundingClientRect()
     const percent = (e.clientX - rect.left) / rect.width
-    const actualDuration = isFinite(duration) && duration > 0 ? duration : recording.duration
-    const newTime = percent * actualDuration
+    const newTime = percent * duration
     audioRef.current.currentTime = newTime
     setCurrentTime(newTime)
   }
@@ -327,17 +330,13 @@ export default function RecordingDetailPage() {
                 <div 
                   className="h-2 bg-primary rounded-full transition-all"
                   style={{ 
-                    width: `${
-                      (isFinite(duration) && duration > 0 ? duration : recording.duration) > 0 
-                        ? (currentTime / (isFinite(duration) && duration > 0 ? duration : recording.duration)) * 100 
-                        : 0
-                    }%` 
+                    width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` 
                   }}
                 />
               </div>
               <div className="flex justify-between text-xs text-muted-foreground mt-1">
                 <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(isFinite(duration) && duration > 0 ? duration : recording.duration)}</span>
+                <span>{formatTime(duration)}</span>
               </div>
             </div>
           </div>
