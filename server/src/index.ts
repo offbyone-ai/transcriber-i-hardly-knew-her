@@ -36,11 +36,17 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// Serve static files (client build) for production
-app.use('/*', serveStatic({ root: './static' }))
+// Serve landing page at root
+app.get('/', serveStatic({ path: './landing/index.html' }))
 
-// Fallback to index.html for client-side routing
-app.get('/*', serveStatic({ path: './static/index.html' }))
+// Serve landing page assets (CSS, images, etc.)
+app.use('/landing/*', serveStatic({ root: './' }))
+
+// Serve React app static files under /app
+app.use('/app/*', serveStatic({ root: './static' }))
+
+// Fallback to React app index.html for client-side routing under /app
+app.get('/app/*', serveStatic({ path: './static/index.html' }))
 
 export default app
 

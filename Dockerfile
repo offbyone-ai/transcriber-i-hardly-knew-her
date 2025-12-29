@@ -29,6 +29,9 @@ RUN echo "Installing dependencies (postinstall will build shared + server)..." &
 # Copy remaining source code (client for final build)
 COPY client/ ./client/
 
+# Copy landing page (static HTML/CSS served at root)
+COPY landing/ ./landing/
+
 # Build argument for client API URL
 ARG VITE_SERVER_URL
 ENV VITE_SERVER_URL=${VITE_SERVER_URL:-http://localhost:3000}
@@ -50,6 +53,9 @@ COPY --from=build /app/server/transcriber transcriber
 
 # Copy static client files (client build output)
 COPY --from=build /app/server/static/ static/
+
+# Copy landing page files (served at root)
+COPY --from=build /app/landing/ landing/
 
 # Copy data directory with proper permissions
 COPY --from=build --chown=nonroot:nonroot /app/data/ data/

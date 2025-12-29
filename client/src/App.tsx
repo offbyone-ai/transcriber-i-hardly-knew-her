@@ -2,8 +2,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from './components/theme-provider'
 import './index.css'
 
-// Import pages (we'll create these)
-import MarketingPage from './pages/marketing.tsx'
+// Import pages
 import LoginPage from './pages/login.tsx'
 import SignupPage from './pages/signup.tsx'
 import AppLayout from './pages/app/layout.tsx'
@@ -16,10 +15,6 @@ import SettingsPage from './pages/app/settings.tsx'
 
 const router = createBrowserRouter([
   {
-    path: '/',
-    element: <MarketingPage />,
-  },
-  {
     path: '/login',
     element: <LoginPage />,
   },
@@ -28,7 +23,7 @@ const router = createBrowserRouter([
     element: <SignupPage />,
   },
   {
-    path: '/app',
+    path: '/',
     element: <AppLayout />,
     children: [
       {
@@ -57,7 +52,9 @@ const router = createBrowserRouter([
       },
     ],
   },
-])
+], {
+  basename: '/app',
+})
 
 function App() {
   return (
