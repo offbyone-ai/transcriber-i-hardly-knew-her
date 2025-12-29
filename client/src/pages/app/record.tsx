@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mic, Square, Play, Pause, AlertCircle, Upload } from 'lucide-react'
+import { Mic, Square, Play, Pause, AlertCircle, Upload, Loader2 } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { db, addRecording } from '@/lib/db'
 import { Button } from '@/components/ui/button'
@@ -181,11 +181,16 @@ export default function RecordPage() {
         // Process chunks every 10 seconds
         realtimeIntervalRef.current = window.setInterval(() => {
           if (realtimeTranscriberRef.current) {
+            console.log('[Real-time] Starting to process chunk...')
             setIsRealtimeProcessing(true)
-            realtimeTranscriberRef.current.processCurrentChunk().catch(err => {
-              console.error('Error processing real-time chunk:', err)
-              setIsRealtimeProcessing(false)
-            })
+            realtimeTranscriberRef.current.processCurrentChunk()
+              .then(() => {
+                console.log('[Real-time] Chunk processed successfully')
+              })
+              .catch(err => {
+                console.error('[Real-time] Error processing chunk:', err)
+                setIsRealtimeProcessing(false)
+              })
           }
         }, 10000) // Process every 10 seconds
       }
@@ -630,25 +635,35 @@ export default function RecordPage() {
             </Card>
             
             {/* Real-time transcription display */}
-            {realtimeEnabled && realtimeChunks.length > 0 && (
+            {realtimeEnabled && isRecording && (
               <Card className="p-4 sm:p-6">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base sm:text-lg font-semibold">Real-time Transcription</h3>
                     {isRealtimeProcessing && (
-                      <span className="text-xs text-muted-foreground">Processing...</span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Loader2 size={14} className="animate-spin" />
+                        Processing...
+                      </span>
                     )}
                   </div>
-                  <div className="max-h-48 sm:max-h-64 overflow-y-auto space-y-2 text-sm">
-                    {realtimeChunks.map((chunk, idx) => (
-                      <div key={idx} className="p-2 sm:p-3 bg-accent rounded-lg">
-                        <div className="text-xs text-muted-foreground mb-1">
-                          {formatTime(Math.floor(chunk.timestamp))}
+                  {realtimeChunks.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <p>Transcription will appear here after 10 seconds of recording...</p>
+                      <p className="text-xs mt-2">First chunk may take 30-60s to process</p>
+                    </div>
+                  ) : (
+                    <div className="max-h-48 sm:max-h-64 overflow-y-auto space-y-2 text-sm">
+                      {realtimeChunks.map((chunk, idx) => (
+                        <div key={idx} className="p-2 sm:p-3 bg-accent rounded-lg">
+                          <div className="text-xs text-muted-foreground mb-1">
+                            {formatTime(Math.floor(chunk.timestamp))}
+                          </div>
+                          <div className="text-xs sm:text-sm">{chunk.text}</div>
                         </div>
-                        <div className="text-xs sm:text-sm">{chunk.text}</div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Note: Real-time transcription is approximate. A final, more accurate transcription will be available after stopping the recording.
                   </p>

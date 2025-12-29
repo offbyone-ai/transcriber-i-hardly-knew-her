@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw } from 'lucide-react'
-import { db, deleteRecording, addTranscription, updateRecordingSubject, fixRecordingDuration } from '@/lib/db'
+import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X } from 'lucide-react'
+import { db, deleteRecording, addTranscription, updateRecordingSubject, updateRecordingTitle, fixRecordingDuration } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAlert } from '@/components/alert-provider'
@@ -28,6 +28,8 @@ export default function RecordingDetailPage() {
   const [transcriptionProgress, setTranscriptionProgress] = useState<TranscriptionProgress | null>(null)
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [isMoving, setIsMoving] = useState(false)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editedTitle, setEditedTitle] = useState('')
 
   useEffect(() => {
     loadRecordingData()
@@ -128,6 +130,46 @@ export default function RecordingDetailPage() {
       })
     } finally {
       setIsMoving(false)
+    }
+  }
+
+  function handleStartEditTitle() {
+    if (!recording) return
+    setEditedTitle(recording.title || '')
+    setIsEditingTitle(true)
+  }
+
+  async function handleSaveTitle() {
+    if (!id || !recording) return
+    
+    try {
+      const trimmedTitle = editedTitle.trim()
+      await updateRecordingTitle(id, trimmedTitle || undefined)
+      await loadRecordingData() // Reload to show updated title
+      setIsEditingTitle(false)
+      showAlert({
+        title: 'Title Updated',
+        description: 'Recording title has been updated successfully.'
+      })
+    } catch (error) {
+      console.error('Failed to update title:', error)
+      showAlert({
+        title: 'Update Failed',
+        description: 'Failed to update title. Please try again.'
+      })
+    }
+  }
+
+  function handleCancelEditTitle() {
+    setIsEditingTitle(false)
+    setEditedTitle('')
+  }
+
+  function handleTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      handleSaveTitle()
+    } else if (e.key === 'Escape') {
+      handleCancelEditTitle()
     }
   }
 
@@ -287,8 +329,39 @@ export default function RecordingDetailPage() {
           </Link>
           
           <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">{recording.title || 'Untitled Recording'}</h1>
+            <div className="flex-1">
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    onKeyDown={handleTitleKeyDown}
+                    onBlur={handleSaveTitle}
+                    autoFocus
+                    className="text-3xl font-bold bg-background border-b-2 border-primary focus:outline-none flex-1"
+                    placeholder="Untitled Recording"
+                  />
+                  <Button variant="ghost" size="icon" onClick={handleSaveTitle} className="text-green-600 hover:text-green-700">
+                    <Check size={20} />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handleCancelEditTitle} className="text-muted-foreground">
+                    <X size={20} />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-2 group">
+                  <h1 className="text-3xl font-bold">{recording.title || 'Untitled Recording'}</h1>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={handleStartEditTitle}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Pencil size={16} />
+                  </Button>
+                </div>
+              )}
               <div className="flex flex-col gap-2 mt-2">
                 <p className="text-sm text-muted-foreground">
                   Recorded on {new Date(recording.createdAt).toLocaleDateString()} • {formatTime(recording.duration)} • {(recording.fileSize / 1024 / 1024).toFixed(2)} MB

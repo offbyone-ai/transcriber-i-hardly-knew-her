@@ -161,6 +161,10 @@ export async function updateRecordingSubject(recordingId: string, newSubjectId: 
   return await db.recordings.update(recordingId, { subjectId: newSubjectId })
 }
 
+export async function updateRecordingTitle(recordingId: string, newTitle: string | undefined) {
+  return await db.recordings.update(recordingId, { title: newTitle })
+}
+
 // Model management functions
 export async function saveModel(name: WhisperModel, data: ArrayBuffer) {
   return await db.models.put({
