@@ -27,7 +27,8 @@ export default function LoginPage() {
       if (result.error) {
         setError(result.error.message || 'Login failed')
       } else {
-        navigate('/app')
+        // Navigate to root - basename '/app' will make this /app/
+        navigate('/')
       }
     } catch (err) {
       setError('An unexpected error occurred')

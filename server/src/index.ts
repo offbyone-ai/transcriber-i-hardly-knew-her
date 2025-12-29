@@ -1,10 +1,14 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { logger } from 'hono/logger'
 import { serveStatic } from 'hono/bun'
 import type { ApiResponse } from 'shared/dist'
 import { auth } from './auth'
 
 const app = new Hono()
+
+// Logger middleware - logs all requests with timing
+app.use('*', logger())
 
 // CORS configuration - only for API routes
 app.use('/api/*', cors({
