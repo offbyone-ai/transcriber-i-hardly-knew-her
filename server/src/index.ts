@@ -44,7 +44,10 @@ app.get('/health', (c) => {
 app.get('/', serveStatic({ path: './landing/index.html' }))
 
 // Serve landing page assets (CSS, images, etc.)
-app.use('/landing/*', serveStatic({ root: './' }))
+app.get('/landing/*', serveStatic({ 
+  root: './',
+  // Don't rewrite path - Hono will look for ./landing/styles.css correctly
+}))
 
 // Serve React app at /app and /app/
 app.get('/app', serveStatic({ path: './static/index.html' }))
