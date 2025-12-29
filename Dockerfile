@@ -8,7 +8,7 @@ COPY package.json bun.lock ./
 COPY client/package.json ./client/
 COPY server/package.json ./server/
 COPY shared/package.json ./shared/
-
+COPY turbo.json ./
 # Install dependencies with frozen lockfile
 RUN bun install --frozen-lockfile
 
