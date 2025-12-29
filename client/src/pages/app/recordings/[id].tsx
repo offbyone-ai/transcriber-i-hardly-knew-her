@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Trash2, Play, Pause, Loader2 } from 'lucide-react'
+import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw } from 'lucide-react'
 import { db, deleteRecording, addTranscription, updateRecordingSubject } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -134,6 +134,11 @@ export default function RecordingDetailPage() {
     setTranscriptionProgress(null)
 
     try {
+      // Delete existing transcription if it exists
+      if (transcription) {
+        await db.transcriptions.delete(transcription.id)
+      }
+
       const result = await transcribeAudio(
         {
           audioBlob: recording.audioBlob,
@@ -160,6 +165,13 @@ export default function RecordingDetailPage() {
 
       await addTranscription(newTranscription)
       setTranscription(newTranscription)
+      
+      if (transcription) {
+        showAlert({
+          title: 'Re-transcription Complete',
+          description: 'Recording has been re-transcribed with updated settings.'
+        })
+      }
     } catch (error) {
       console.error('Transcription failed:', error)
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
@@ -335,7 +347,7 @@ export default function RecordingDetailPage() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Transcription</h2>
-            {!transcription && (
+            {!transcription ? (
               <Button 
                 variant="default" 
                 size="sm"
@@ -349,6 +361,25 @@ export default function RecordingDetailPage() {
                   </>
                 ) : (
                   'Start Transcription'
+                )}
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleTranscribe}
+                disabled={isTranscribing}
+              >
+                {isTranscribing ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Re-transcribing...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={16} />
+                    Re-transcribe
+                  </>
                 )}
               </Button>
             )}
