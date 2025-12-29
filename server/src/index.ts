@@ -47,13 +47,17 @@ app.get('/app', serveStatic({ path: './static/index.html' }))
 app.get('/app/', serveStatic({ path: './static/index.html' }))
 
 // Serve React app static assets with proper MIME types
-// Rewrite /app/assets/file.js -> ./static/assets/file.js
-app.use('/app/assets/*', serveStatic({ 
+// Must use app.get to ensure it runs before the catch-all
+app.get('/app/assets/*', serveStatic({ 
   root: './static',
   rewriteRequestPath: (path) => path.replace(/^\/app/, '')
 }))
 
+// Serve vite.svg and other root static files
+app.get('/app/vite.svg', serveStatic({ path: './static/vite.svg' }))
+
 // SPA fallback: serve index.html for all other /app/* routes (client-side routing)
+// This must come LAST to avoid catching asset requests
 app.get('/app/*', serveStatic({ path: './static/index.html' }))
 
 export default app
