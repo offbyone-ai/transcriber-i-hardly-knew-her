@@ -25,6 +25,19 @@ export default defineConfig({
   },
   worker: {
     format: 'es',
+    plugins: () => [
+      {
+        name: 'configure-worker-transformers',
+        config() {
+          return {
+            optimizeDeps: {
+              // Don't pre-bundle in worker, let it be bundled normally
+              include: ['@huggingface/transformers']
+            }
+          }
+        }
+      }
+    ],
   },
   server: {
     headers: {

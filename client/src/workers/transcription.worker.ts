@@ -21,32 +21,41 @@ class WhisperPipeline {
 
     // Load pipeline if not already loaded
     if (!this.instance) {
-      // Dynamic import to avoid loading transformers.js until needed
-      console.log('[Worker] Dynamically importing transformers.js...')
-      const { pipeline, env } = await import('@huggingface/transformers')
-      console.log('[Worker] Transformers.js imported successfully')
+      try {
+        // Import from CDN to avoid bundling transformers.js
+        // Using the ESM CDN version that works in Web Workers
+        console.log('[Worker] Dynamically importing transformers.js from CDN...')
+        const transformersUrl = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1'
+        const { pipeline, env } = await import(/* @vite-ignore */ transformersUrl)
+        console.log('[Worker] Transformers.js imported successfully')
       
-      // Configure environment BEFORE creating pipeline
-      env.allowLocalModels = false
-      env.allowRemoteModels = true
-      env.useBrowserCache = true
-      
-      // Let transformers.js use its default WASM paths (auto-configured)
-      // Don't override the backends - let it figure out the right version
-      
-      console.log('[Worker] Environment configured:', {
-        allowRemoteModels: env.allowRemoteModels,
-        useBrowserCache: env.useBrowserCache
-      })
-      
-      console.log('[Worker] Creating pipeline for model:', modelName)
-      this.instance = await pipeline(
-        'automatic-speech-recognition',
-        modelName,
-        { progress_callback: progressCallback }
-      ) as AutomaticSpeechRecognitionPipeline
-      
-      console.log('[Worker] Pipeline created successfully')
+        // Configure environment BEFORE creating pipeline
+        env.allowLocalModels = false
+        env.allowRemoteModels = true
+        env.useBrowserCache = true
+        
+        // Let transformers.js use its default WASM paths (auto-configured)
+        // Don't override the backends - let it figure out the right version
+        
+        console.log('[Worker] Environment configured:', {
+          allowRemoteModels: env.allowRemoteModels,
+          useBrowserCache: env.useBrowserCache
+        })
+        
+        console.log('[Worker] Creating pipeline for model:', modelName)
+        this.instance = await pipeline(
+          'automatic-speech-recognition',
+          modelName,
+          { progress_callback: progressCallback }
+        ) as AutomaticSpeechRecognitionPipeline
+        
+        console.log('[Worker] Pipeline created successfully')
+      } catch (error) {
+        console.error('[Worker] Failed to initialize pipeline:', error)
+        console.error('[Worker] Error details:', error instanceof Error ? error.message : String(error))
+        console.error('[Worker] Error stack:', error instanceof Error ? error.stack : 'No stack')
+        throw error
+      }
     }
 
     return this.instance
