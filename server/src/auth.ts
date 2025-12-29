@@ -17,17 +17,17 @@ const db = new Database(dbPath)
 
 // Optimize SQLite for Docker deployment
 // WAL mode: Write-Ahead Logging for better concurrency and crash recovery
-db.exec("PRAGMA journal_mode = WAL;")
+db.run("PRAGMA journal_mode = WAL;")
 // Synchronous mode: Ensure data is written to disk (important for Docker volumes)
-db.exec("PRAGMA synchronous = NORMAL;")
+db.run("PRAGMA synchronous = NORMAL;")
 // Cache size: 10MB cache for better performance
-db.exec("PRAGMA cache_size = -10000;")
+db.run("PRAGMA cache_size = -10000;")
 // Temp store: Use memory for temporary tables
-db.exec("PRAGMA temp_store = MEMORY;")
+db.run("PRAGMA temp_store = MEMORY;")
 // mmap_size: Memory-mapped I/O for faster reads (64MB)
-db.exec("PRAGMA mmap_size = 67108864;")
+db.run("PRAGMA mmap_size = 67108864;")
 // page_size: Optimal page size for modern systems
-db.exec("PRAGMA page_size = 4096;")
+db.run("PRAGMA page_size = 4096;")
 
 console.log(`📦 Database initialized: ${dbPath}`)
 console.log(`📊 WAL mode enabled for optimal Docker performance`)
