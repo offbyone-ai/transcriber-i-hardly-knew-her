@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw } from 'lucide-react'
-import { db, deleteRecording, addTranscription, updateRecordingSubject } from '@/lib/db'
+import { db, deleteRecording, addTranscription, updateRecordingSubject, fixRecordingDuration } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAlert } from '@/components/alert-provider'
@@ -60,7 +60,26 @@ export default function RecordingDetailPage() {
       
       // Set initial duration from recording data
       console.log('[Recording Detail] Recording duration from DB:', recordingData.duration)
-      setDuration(recordingData.duration)
+      
+      // If duration is 0 or missing, try to fix it
+      if (!recordingData.duration || recordingData.duration === 0) {
+        console.log('[Recording Detail] Duration is 0, attempting to fix...')
+        try {
+          const fixedDuration = await fixRecordingDuration(recordingData.id)
+          console.log('[Recording Detail] Fixed duration:', fixedDuration)
+          setDuration(fixedDuration)
+          // Reload recording data to get updated duration
+          const updatedRecording = await db.recordings.get(id)
+          if (updatedRecording) {
+            setRecording(updatedRecording)
+          }
+        } catch (error) {
+          console.error('[Recording Detail] Failed to fix duration:', error)
+          setDuration(recordingData.duration)
+        }
+      } else {
+        setDuration(recordingData.duration)
+      }
 
       // Load transcription if exists
       const transcriptionData = await db.transcriptions
@@ -318,10 +337,10 @@ export default function RecordingDetailPage() {
             <Button
               variant="default"
               size="icon"
-              className="w-12 h-12 rounded-full"
+              className="w-12 h-12 rounded-full flex-shrink-0"
               onClick={togglePlayPause}
             >
-              {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+              {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
             </Button>
             
             <div className="flex-1">

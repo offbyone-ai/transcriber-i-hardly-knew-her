@@ -181,3 +181,38 @@ export async function getDownloadedModels() {
 export async function deleteModel(name: WhisperModel) {
   return await db.models.delete(name)
 }
+
+// Fix duration for a specific recording
+export async function fixRecordingDuration(recordingId: string): Promise<number> {
+  const recording = await db.recordings.get(recordingId)
+  if (!recording) {
+    throw new Error('Recording not found')
+  }
+  
+  const duration = await getAudioDuration(recording.audioBlob)
+  await db.recordings.update(recordingId, { duration })
+  return duration
+}
+
+// Fix duration for all recordings with 0 or missing duration
+export async function fixAllRecordingDurations(): Promise<number> {
+  const recordings = await db.recordings.toArray()
+  const recordingsToFix = recordings.filter(r => !r.duration || r.duration === 0)
+  
+  console.log(`[Fix Durations] Found ${recordingsToFix.length} recordings to fix`)
+  
+  let fixed = 0
+  for (const recording of recordingsToFix) {
+    try {
+      const duration = await getAudioDuration(recording.audioBlob)
+      await db.recordings.update(recording.id, { duration })
+      console.log(`[Fix Durations] Fixed recording ${recording.id}: ${duration}s`)
+      fixed++
+    } catch (error) {
+      console.error(`[Fix Durations] Failed to fix recording ${recording.id}:`, error)
+    }
+  }
+  
+  console.log(`[Fix Durations] Successfully fixed ${fixed}/${recordingsToFix.length} recordings`)
+  return fixed
+}
