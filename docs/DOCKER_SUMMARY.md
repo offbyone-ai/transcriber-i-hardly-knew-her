@@ -1,9 +1,51 @@
 # Docker Deployment - Implementation Summary
 
-## Completed Work (2025-12-28)
+## Completed Work (2025-12-28 & 2025-12-29)
 
 ### Overview
-Successfully implemented Docker deployment for the Transcriber app using Bun executable optimization, achieving a minimal Docker image size of ~120MB (vs 500-800MB for traditional Node.js deployments).
+Successfully implemented Docker deployment for the Transcriber app using Bun executable optimization, achieving a Docker image size of ~167MB. The implementation includes special handling for workspace dependencies and Coolify platform compatibility.
+
+---
+
+## Build Process Notes
+
+### Source Copy Order (Updated 2025-12-29)
+
+The Dockerfile copies source code in a specific order to support the postinstall script which builds workspace dependencies (shared + server):
+
+1. **Copy package.json files** - For dependency resolution
+2. **Copy root tsconfig.json** - Required by shared package (extends this config)
+3. **Copy shared/ and server/ source** - Needed for postinstall to build these packages
+4. **Run bun install** - Postinstall builds shared + server during this step
+5. **Copy client/ source** - For final build (not needed by postinstall)
+6. **Run final build** - Builds client and creates executable
+
+This ensures workspace dependencies (`workspace:*`) are available during installation and prevents the build failure that was occurring in Coolify where postinstall couldn't find source files.
+
+### Layer Caching Strategy
+
+The modified approach changes caching behavior:
+
+- **Package files layer** - Rarely changes (optimal caching)
+- **Source code layer** - Changes to shared/server invalidate install layer
+- **Install layer** - Rebuilds when shared/server/tsconfig change
+- **Client code layer** - Client changes DON'T trigger reinstall (common case optimized)
+
+**Trade-off:** Shared/server changes trigger full reinstall, but this is acceptable because:
+- These packages change infrequently (mostly type definitions)
+- Client changes (most common) still use cached install layer
+- Necessary for Coolify compatibility
+
+### Bun Executable Compilation
+
+**Important:** When using `bun build --compile`, Bun automatically starts the server from the exported default app object. The manual `Bun.serve()` call in `server/src/index.ts` is conditionally skipped when running as a compiled executable to prevent double-binding errors.
+
+```typescript
+// Only start manually in dev mode, not in compiled executable
+if (import.meta.main && !Bun.main.includes('transcriber')) {
+  Bun.serve({ fetch: app.fetch, port: Number(port) })
+}
+```
 
 ---
 

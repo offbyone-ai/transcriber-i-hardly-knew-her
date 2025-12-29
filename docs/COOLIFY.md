@@ -306,10 +306,29 @@ docker logs <container-name> --tail 50
    ```
    → Change PORT environment variable in Coolify
 
-3. **Build failed:**
-   → Check Coolify build logs
+3. **Build failed at "bun install":**
+   ```
+   error: postinstall script from "bhvr" exited with 2
+   failed to solve: process "/bin/sh -c bun install --frozen-lockfile"
+   ```
+   → This was fixed in commit 98c53d7 (2025-12-29)
+   → The postinstall script requires source files to be present
+   → Ensure you're using the latest Dockerfile which copies source before install
+   → If still failing, check that shared/, server/src/, and tsconfig.json exist in repo
+
+4. **Build failed:**
+   → Check Coolify build logs for specific error
    → Ensure `docker-compose.coolify.yml` is in repo root
    → Verify Dockerfile syntax
+   → Check all required files are committed to git
+
+5. **Container exits with "port in use" error:**
+   ```
+   error: Failed to start server. Is port 3000 in use?
+   ```
+   → This was a double-bind issue fixed in server/src/index.ts
+   → Ensure you have the latest version with conditional Bun.serve()
+   → In compiled executables, Bun auto-starts the server from exported default
 
 ### Backup Container Issues
 
