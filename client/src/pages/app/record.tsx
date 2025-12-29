@@ -35,6 +35,7 @@ export default function RecordPage() {
   const [isRealtimeProcessing, setIsRealtimeProcessing] = useState(false)
   const realtimeTranscriberRef = useRef<RealtimeTranscriber | null>(null)
   const realtimeIntervalRef = useRef<number | null>(null)
+  const recordingTimeRef = useRef<number>(0)
   
   // Form state
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -191,11 +192,13 @@ export default function RecordPage() {
       
       setIsRecording(true)
       setRecordingTime(0)
+      recordingTimeRef.current = 0
       
       // Start timer
       timerRef.current = window.setInterval(() => {
         setRecordingTime(prev => {
           const newTime = prev + 1
+          recordingTimeRef.current = newTime
           
           // Auto-stop at 2 hours
           if (newTime >= TWO_HOURS) {
@@ -271,13 +274,17 @@ export default function RecordPage() {
     try {
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' })
       
+      // Use ref value to get the actual recording time (state might be stale)
+      const actualDuration = recordingTimeRef.current
+      console.log('[Record] Saving recording with duration:', actualDuration)
+      
       const recording: Recording = {
         id: crypto.randomUUID(),
         subjectId: selectedSubjectId || undefined,
         userId: session!.user!.id as string,
         title: title.trim() || undefined,
         audioBlob,
-        duration: recordingTime,
+        duration: actualDuration,
         fileSize: audioBlob.size,
         source: 'recording',
         createdAt: new Date(),
