@@ -145,12 +145,22 @@ self.addEventListener('message', async (event) => {
       self.postMessage({ status: 'ready' })
 
       // Perform transcription
-      const result = await transcriber(message.audioData, {
-        language: message.language,
+      // Note: English-only models (.en) don't accept language parameter
+      const isEnglishOnly = modelId.includes('.en')
+      const transcriptionOptions = {
         return_timestamps: true, // Use segment-level timestamps (sentences/phrases) instead of word-level
         chunk_length_s: 30,
         stride_length_s: 5,
-      })
+      }
+      
+      // Only add language parameter for multilingual models
+      if (!isEnglishOnly && message.language) {
+        transcriptionOptions.language = message.language
+      }
+      
+      console.log('[Worker] Transcription options:', transcriptionOptions)
+      
+      const result = await transcriber(message.audioData, transcriptionOptions)
 
       // Send result back to main thread
       // Handle both single and array results

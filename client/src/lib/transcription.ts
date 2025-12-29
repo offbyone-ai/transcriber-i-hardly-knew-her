@@ -314,8 +314,16 @@ export class RealtimeTranscriber {
     
     try {
       // Combine all chunks into one blob
+      // Note: This creates a concatenated blob, but WebM chunks from MediaRecorder
+      // with short timeslices may not decode properly when concatenated
       const audioBlob = new Blob(chunksToProcess, { type: 'audio/webm;codecs=opus' })
       console.log('[RealtimeTranscriber] Created audio blob, size:', audioBlob.size, 'bytes')
+      
+      // Check if blob is too small (likely incomplete audio)
+      if (audioBlob.size < 1000) {
+        console.log('[RealtimeTranscriber] Blob too small, skipping transcription')
+        return
+      }
       
       // Transcribe the chunk
       console.log('[RealtimeTranscriber] Starting transcription with model:', this.modelName)

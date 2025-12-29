@@ -4,15 +4,27 @@
  * Convert audio Blob to 16kHz mono Float32Array for Whisper
  */
 export async function convertAudioForWhisper(audioBlob: Blob): Promise<Float32Array> {
+  console.log('[AudioProcessing] Converting audio, blob size:', audioBlob.size, 'type:', audioBlob.type)
+  
   // Create an AudioContext
   const audioContext = new AudioContext({ sampleRate: 16000 })
   
   try {
     // Convert blob to ArrayBuffer
     const arrayBuffer = await audioBlob.arrayBuffer()
+    console.log('[AudioProcessing] ArrayBuffer size:', arrayBuffer.byteLength)
     
     // Decode audio data
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+    let audioBuffer: AudioBuffer
+    try {
+      audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      console.log('[AudioProcessing] Decoded successfully, duration:', audioBuffer.duration, 's, sample rate:', audioBuffer.sampleRate)
+    } catch (decodeError) {
+      console.error('[AudioProcessing] Failed to decode audio data:', decodeError)
+      console.error('[AudioProcessing] Blob type:', audioBlob.type)
+      console.error('[AudioProcessing] Blob size:', audioBlob.size)
+      throw new Error('EncodingError: Unable to decode audio data')
+    }
     
     // Get audio data (convert to mono if needed)
     let audioData: Float32Array
@@ -32,9 +44,11 @@ export async function convertAudioForWhisper(audioBlob: Blob): Promise<Float32Ar
     
     // Resample to 16kHz if needed
     if (audioBuffer.sampleRate !== 16000) {
+      console.log('[AudioProcessing] Resampling from', audioBuffer.sampleRate, 'to 16000 Hz')
       audioData = await resampleAudio(audioData, audioBuffer.sampleRate, 16000)
     }
     
+    console.log('[AudioProcessing] Final audio data length:', audioData.length, 'samples')
     return audioData
   } finally {
     await audioContext.close()

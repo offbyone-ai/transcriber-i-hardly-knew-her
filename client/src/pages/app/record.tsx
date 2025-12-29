@@ -165,8 +165,9 @@ export default function RecordPage() {
       
       mediaRecorder.onstop = handleRecordingComplete
       
-      // Start recording with timeslice for real-time chunks (1 second intervals)
-      mediaRecorder.start(1000)
+      // Start recording with timeslice for real-time chunks
+      // Use 3-second intervals for more complete audio chunks
+      mediaRecorder.start(enableRealtime ? 3000 : undefined)
       mediaRecorderRef.current = mediaRecorder
       
       // Setup real-time transcription if enabled
