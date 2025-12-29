@@ -259,26 +259,39 @@ export class RealtimeTranscriber {
   }
   
   start() {
+    console.log('[RealtimeTranscriber] Starting real-time transcription')
     this.startTime = Date.now()
     this.chunkStartTime = this.startTime
     this.audioChunks = []
     this.isTranscribing = true
+    console.log('[RealtimeTranscriber] Started, startTime:', this.startTime)
   }
   
   addAudioData(blob: Blob) {
-    if (!this.isTranscribing) return
+    if (!this.isTranscribing) {
+      console.log('[RealtimeTranscriber] Not transcribing, ignoring audio data')
+      return
+    }
+    console.log('[RealtimeTranscriber] Adding audio chunk, size:', blob.size, 'total chunks:', this.audioChunks.length + 1)
     this.audioChunks.push(blob)
   }
   
   async processCurrentChunk(): Promise<void> {
-    if (!this.isTranscribing || this.audioChunks.length === 0) return
+    console.log('[RealtimeTranscriber] processCurrentChunk called, isTranscribing:', this.isTranscribing, 'chunks:', this.audioChunks.length)
+    
+    if (!this.isTranscribing || this.audioChunks.length === 0) {
+      console.log('[RealtimeTranscriber] Skipping - not transcribing or no chunks')
+      return
+    }
     
     // Wait for any in-progress processing
     if (this.processingPromise) {
+      console.log('[RealtimeTranscriber] Waiting for in-progress processing...')
       await this.processingPromise
     }
     
     // Create a promise for this processing task
+    console.log('[RealtimeTranscriber] Starting to process', this.audioChunks.length, 'chunks')
     this.processingPromise = this._doProcessChunk()
     await this.processingPromise
     this.processingPromise = null
@@ -288,17 +301,24 @@ export class RealtimeTranscriber {
     const chunksToProcess = [...this.audioChunks]
     const chunkStartSeconds = (this.chunkStartTime - this.startTime) / 1000
     
+    console.log('[RealtimeTranscriber] _doProcessChunk: Processing', chunksToProcess.length, 'chunks starting at', chunkStartSeconds, 's')
+    
     // Reset for next chunk
     this.audioChunks = []
     this.chunkStartTime = Date.now()
     
-    if (chunksToProcess.length === 0) return
+    if (chunksToProcess.length === 0) {
+      console.log('[RealtimeTranscriber] No chunks to process')
+      return
+    }
     
     try {
       // Combine all chunks into one blob
       const audioBlob = new Blob(chunksToProcess, { type: 'audio/webm;codecs=opus' })
+      console.log('[RealtimeTranscriber] Created audio blob, size:', audioBlob.size, 'bytes')
       
       // Transcribe the chunk
+      console.log('[RealtimeTranscriber] Starting transcription with model:', this.modelName)
       const result = await transcribeAudio(
         {
           audioBlob,
@@ -308,8 +328,11 @@ export class RealtimeTranscriber {
         undefined // No progress callback for real-time chunks
       )
       
+      console.log('[RealtimeTranscriber] Transcription complete, text:', result.text)
+      
       // Call the callback with the result
       if (this.onChunkComplete) {
+        console.log('[RealtimeTranscriber] Calling onChunkComplete callback')
         this.onChunkComplete({
           text: result.text,
           timestamp: chunkStartSeconds,
@@ -319,9 +342,11 @@ export class RealtimeTranscriber {
             end: seg.end + chunkStartSeconds,
           })),
         })
+      } else {
+        console.log('[RealtimeTranscriber] No callback registered!')
       }
     } catch (error) {
-      console.error('Error processing real-time chunk:', error)
+      console.error('[RealtimeTranscriber] Error processing real-time chunk:', error)
     }
   }
   

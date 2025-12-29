@@ -149,10 +149,12 @@ export default function RecordPage() {
       
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
+          console.log('[Recording] Data available, size:', event.data.size, 'bytes')
           audioChunksRef.current.push(event.data)
           
           // Also feed to real-time transcriber if enabled
           if (realtimeEnabled && realtimeTranscriberRef.current) {
+            console.log('[Real-time] Adding audio data to transcriber, size:', event.data.size)
             realtimeTranscriberRef.current.addAudioData(event.data)
           }
         }
@@ -178,7 +180,7 @@ export default function RecordPage() {
         )
         realtimeTranscriberRef.current.start()
         
-        // Process chunks every 10 seconds
+        // Process chunks every 3 seconds
         realtimeIntervalRef.current = window.setInterval(() => {
           if (realtimeTranscriberRef.current) {
             console.log('[Real-time] Starting to process chunk...')
@@ -192,7 +194,7 @@ export default function RecordPage() {
                 setIsRealtimeProcessing(false)
               })
           }
-        }, 10000) // Process every 10 seconds
+        }, 3000) // Process every 3 seconds
       }
       
       setIsRecording(true)
@@ -649,7 +651,7 @@ export default function RecordPage() {
                   </div>
                   {realtimeChunks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground text-sm">
-                      <p>Transcription will appear here after 10 seconds of recording...</p>
+                      <p>Transcription will appear here after 3 seconds of recording...</p>
                       <p className="text-xs mt-2">First chunk may take 30-60s to process</p>
                     </div>
                   ) : (
