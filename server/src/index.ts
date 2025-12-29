@@ -46,9 +46,15 @@ app.use('/landing/*', serveStatic({ root: './' }))
 app.get('/app', serveStatic({ path: './static/index.html' }))
 app.get('/app/', serveStatic({ path: './static/index.html' }))
 
-// Serve React app static assets (JS, CSS, images, etc.)
-// For files under /app/*, serve from ./static/*
-app.get('/app/*', serveStatic({ root: './static', rewriteRequestPath: (path) => path.replace(/^\/app/, '') }))
+// Serve React app static assets with proper MIME types
+// Rewrite /app/assets/file.js -> ./static/assets/file.js
+app.use('/app/assets/*', serveStatic({ 
+  root: './static',
+  rewriteRequestPath: (path) => path.replace(/^\/app/, '')
+}))
+
+// SPA fallback: serve index.html for all other /app/* routes (client-side routing)
+app.get('/app/*', serveStatic({ path: './static/index.html' }))
 
 export default app
 
