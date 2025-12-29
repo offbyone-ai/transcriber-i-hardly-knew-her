@@ -85,6 +85,11 @@ describe("Routing", () => {
         
         expect(cssRes.status).toBe(200)
         expect(cssRes.headers.get("content-type")).toContain("text/css")
+        
+        // Verify it's actually CSS, not HTML
+        const cssContent = await cssRes.text()
+        expect(cssContent).not.toContain("<!DOCTYPE html")
+        expect(cssContent).not.toContain("<html")
       }
     })
 
@@ -104,6 +109,11 @@ describe("Routing", () => {
           contentType?.includes("text/javascript") || 
           contentType?.includes("application/javascript")
         ).toBe(true)
+        
+        // Verify it's actually JS, not HTML
+        const jsContent = await jsRes.text()
+        expect(jsContent).not.toContain("<!DOCTYPE html")
+        expect(jsContent).not.toContain("<html")
       }
     })
 
@@ -113,6 +123,40 @@ describe("Routing", () => {
       if (res.status === 200) {
         const contentType = res.headers.get("content-type")
         expect(contentType).toContain("image/svg")
+      }
+    })
+    
+    test("GET /app/assets/* paths should serve CSS files, not HTML", async () => {
+      // Test with a known CSS file from the build
+      const res = await app.request("/app/assets/index-DoJK-WUz.css")
+      
+      if (res.status === 200) {
+        expect(res.headers.get("content-type")).toContain("text/css")
+        
+        const content = await res.text()
+        // Should be CSS content
+        expect(content).not.toContain("<!DOCTYPE")
+        expect(content).not.toContain("<html")
+        expect(content).not.toContain("<div id=\"root\">")
+      }
+    })
+    
+    test("GET /app/assets/* paths should serve JS files, not HTML", async () => {
+      // Test with a known JS file from the build
+      const res = await app.request("/app/assets/index-CHoz22pY.js")
+      
+      if (res.status === 200) {
+        const contentType = res.headers.get("content-type")
+        expect(
+          contentType?.includes("javascript") || 
+          contentType?.includes("application/javascript")
+        ).toBe(true)
+        
+        const content = await res.text()
+        // Should be JS content
+        expect(content).not.toContain("<!DOCTYPE")
+        expect(content).not.toContain("<html")
+        expect(content).not.toContain("<div id=\"root\">")
       }
     })
   })

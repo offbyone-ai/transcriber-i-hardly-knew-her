@@ -63,6 +63,9 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
+// Diagnostic page for testing routing
+app.get('/diagnostic', serveStatic({ path: './static/diagnostic.html' }))
+
 // Serve landing page at root
 app.get('/', serveStatic({ path: './landing/index.html' }))
 
