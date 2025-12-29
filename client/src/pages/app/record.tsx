@@ -16,7 +16,7 @@ export default function RecordPage() {
   const { data: session } = useSession()
   
   // Tab state
-  const [mode, setMode] = useState<'record' | 'upload'>('record')
+  const [mode, setMode] = useState<'record' | 'upload' | 'live'>('record')
   
   // Recording state
   const [isRecording, setIsRecording] = useState(false)
@@ -117,6 +117,9 @@ export default function RecordPage() {
     setError(null)
     setRealtimeChunks([])
     
+    // Enable real-time transcription if in 'live' mode
+    const enableRealtime = mode === 'live' || realtimeEnabled
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -153,7 +156,7 @@ export default function RecordPage() {
           audioChunksRef.current.push(event.data)
           
           // Also feed to real-time transcriber if enabled
-          if (realtimeEnabled && realtimeTranscriberRef.current) {
+          if (enableRealtime && realtimeTranscriberRef.current) {
             console.log('[Real-time] Adding audio data to transcriber, size:', event.data.size)
             realtimeTranscriberRef.current.addAudioData(event.data)
           }
@@ -167,7 +170,7 @@ export default function RecordPage() {
       mediaRecorderRef.current = mediaRecorder
       
       // Setup real-time transcription if enabled
-      if (realtimeEnabled) {
+      if (enableRealtime) {
         const modelName = getPreferredModel()
         realtimeTranscriberRef.current = new RealtimeTranscriber(
           modelName,
@@ -497,7 +500,7 @@ export default function RecordPage() {
         <div className="text-center">
           <h1 className="text-2xl sm:text-3xl font-bold">Record or Upload Audio</h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Record audio live or upload an existing file for transcription
+            Record audio, enable live transcription, or upload an existing file
           </p>
         </div>
         
@@ -507,7 +510,7 @@ export default function RecordPage() {
             <button
               onClick={() => setMode('record')}
               disabled={isRecording}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                 mode === 'record' 
                   ? 'bg-background text-foreground shadow-sm' 
                   : 'text-muted-foreground hover:text-foreground'
@@ -517,9 +520,21 @@ export default function RecordPage() {
               Record
             </button>
             <button
+              onClick={() => setMode('live')}
+              disabled={isRecording}
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                mode === 'live' 
+                  ? 'bg-background text-foreground shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <Loader2 size={16} />
+              Live
+            </button>
+            <button
               onClick={() => setMode('upload')}
               disabled={isRecording}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                 mode === 'upload' 
                   ? 'bg-background text-foreground shadow-sm' 
                   : 'text-muted-foreground hover:text-foreground'
@@ -541,7 +556,7 @@ export default function RecordPage() {
           </Card>
         )}
 
-        {mode === 'record' ? (
+        {(mode === 'record' || mode === 'live') ? (
           // Recording UI
           <>
             <Card className="p-6 sm:p-8 md:p-12">
@@ -637,7 +652,7 @@ export default function RecordPage() {
             </Card>
             
             {/* Real-time transcription display */}
-            {realtimeEnabled && isRecording && (
+            {(mode === 'live' || realtimeEnabled) && isRecording && (
               <Card className="p-4 sm:p-6">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -775,6 +790,16 @@ export default function RecordPage() {
               className="text-sm sm:text-base"
             />
           </div>
+          
+          {mode === 'live' && (
+            <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+              <p className="text-xs sm:text-sm text-foreground">
+                <strong>Live Transcription Mode:</strong> Audio will be transcribed in real-time as you record. 
+                Transcription appears every 3 seconds (processing takes 10-30s per chunk). 
+                This mode uses more CPU and battery.
+              </p>
+            </div>
+          )}
           
           {mode === 'record' && (
             <div className="space-y-2">
