@@ -46,4 +46,4 @@ bun.lockb
 test-results/
 playwright-report
 
-*.log
+*.logserver/landing/
