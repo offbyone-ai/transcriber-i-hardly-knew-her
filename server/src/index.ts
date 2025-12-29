@@ -33,6 +33,16 @@ app.use('*', async (c, next) => {
   console.log(`--> ${method} ${path} ${status} ${timeStr}`)
 })
 
+// Security headers for SharedArrayBuffer and Web Workers with WASM
+app.use('*', async (c, next) => {
+  await next()
+  
+  // These headers are required for SharedArrayBuffer and proper Web Worker + WASM support
+  c.header('Cross-Origin-Embedder-Policy', 'require-corp')
+  c.header('Cross-Origin-Opener-Policy', 'same-origin')
+  c.header('Cross-Origin-Resource-Policy', 'same-origin')
+})
+
 // Security headers required for SharedArrayBuffer and WASM (used by transformers.js)
 // These must be set on HTML pages, not assets
 app.use('*', async (c, next) => {
