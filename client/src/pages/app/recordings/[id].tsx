@@ -205,11 +205,12 @@ export default function RecordingDetailPage() {
   }
 
   function handleSeek(e: React.MouseEvent<HTMLDivElement>) {
-    if (!audioRef.current) return
+    if (!audioRef.current || !recording) return
 
     const rect = e.currentTarget.getBoundingClientRect()
     const percent = (e.clientX - rect.left) / rect.width
-    const newTime = percent * duration
+    const actualDuration = isFinite(duration) && duration > 0 ? duration : recording.duration
+    const newTime = percent * actualDuration
     audioRef.current.currentTime = newTime
     setCurrentTime(newTime)
   }
@@ -312,12 +313,18 @@ export default function RecordingDetailPage() {
               >
                 <div 
                   className="h-2 bg-primary rounded-full transition-all"
-                  style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                  style={{ 
+                    width: `${
+                      (isFinite(duration) && duration > 0 ? duration : recording.duration) > 0 
+                        ? (currentTime / (isFinite(duration) && duration > 0 ? duration : recording.duration)) * 100 
+                        : 0
+                    }%` 
+                  }}
                 />
               </div>
               <div className="flex justify-between text-xs text-muted-foreground mt-1">
                 <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration > 0 ? duration : recording.duration)}</span>
+                <span>{formatTime(isFinite(duration) && duration > 0 ? duration : recording.duration)}</span>
               </div>
             </div>
           </div>

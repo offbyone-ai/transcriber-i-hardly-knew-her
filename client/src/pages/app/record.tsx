@@ -589,8 +589,17 @@ export default function RecordPage() {
                         size="lg"
                         className="w-12 h-12 sm:w-16 sm:h-16 rounded-full"
                       >
-                        {isPaused ? <Play size={20} className="sm:hidden" /> : <Pause size={20} className="sm:hidden" />}
-                        {isPaused ? <Play size={24} className="hidden sm:block" /> : <Pause size={24} className="hidden sm:block" />}
+                        {isPaused ? (
+                          <>
+                            <Play size={20} className="sm:hidden" />
+                            <Play size={24} className="hidden sm:block" />
+                          </>
+                        ) : (
+                          <>
+                            <Pause size={20} className="sm:hidden" />
+                            <Pause size={24} className="hidden sm:block" />
+                          </>
+                        )}
                       </Button>
                       <Button
                         onClick={stopRecording}
