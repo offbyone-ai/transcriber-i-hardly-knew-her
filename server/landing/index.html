@@ -3,345 +3,256 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Transcribe audio privately in your browser. Zero cloud uploads. 100% local processing. Free forever.">
-  <title>Transcriber - Private Offline Audio Transcription</title>
+  <meta name="description" content="Transcribe audio in your browser. No uploads. No tracking. Just works.">
+  <title>Transcriber</title>
   <link rel="stylesheet" href="/landing/styles.css">
 </head>
 <body>
-  <!-- Hero Section -->
-  <header class="hero">
+  <header class="header">
     <div class="container">
-      <nav class="nav">
-        <div class="logo">🔒 Transcriber</div>
-        <div class="nav-links">
-          <a href="#features">Features</a>
-          <a href="#how-it-works">How It Works</a>
-          <a href="#use-cases">Use Cases</a>
-          <a href="/app" class="btn-secondary">Sign In</a>
-        </div>
+      <nav>
+        <a href="/" class="logo">TRANSCRIBER</a>
+        <a href="/app" class="sign-in">Sign In →</a>
       </nav>
-
-      <div class="hero-content">
-        <h1>Transcribe Audio.<br><span class="gradient">Privately.</span></h1>
-        <p class="hero-subtitle">
-          Your audio never leaves your device. Process everything locally with AI.<br>
-          No cloud uploads. No subscriptions. No surveillance.
-        </p>
-        <div class="cta-buttons">
-          <a href="/app" class="btn-primary">Get Started Free</a>
-          <a href="#how-it-works" class="btn-outline">See How It Works</a>
-        </div>
-        <div class="trust-badges">
-          <span class="badge">🔒 100% Local</span>
-          <span class="badge">⚡ Free Forever</span>
-          <span class="badge">🛡️ Open Source</span>
-        </div>
-      </div>
     </div>
   </header>
 
-  <!-- Features Section -->
-  <section id="features" class="features">
-    <div class="container">
-      <h2>Why Privacy Matters</h2>
-      <p class="section-subtitle">Your conversations are yours alone</p>
-      
-      <div class="feature-grid">
-        <div class="feature-card">
-          <div class="feature-icon">🔒</div>
-          <h3>Never Leaves Your Device</h3>
-          <p>Audio processing happens entirely in your browser using WebAssembly. Zero cloud uploads means zero data breaches.</p>
-          <ul class="feature-list">
-            <li>No server uploads</li>
-            <li>No API calls</li>
-            <li>No tracking pixels</li>
-            <li>GDPR & HIPAA friendly</li>
-          </ul>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">⚡</div>
-          <h3>Fast & Free Forever</h3>
-          <p>Powered by OpenAI's state-of-the-art Whisper AI model. No API costs, no usage limits, no credit cards required.</p>
-          <ul class="feature-list">
-            <li>Industry-leading accuracy</li>
-            <li>Multiple languages supported</li>
-            <li>Works offline after first use</li>
-            <li>No rate limits</li>
-          </ul>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">🛡️</div>
-          <h3>You Own Your Data</h3>
-          <p>Transcriptions stored locally in your browser. Export anytime, delete with one click. No vendor lock-in.</p>
-          <ul class="feature-list">
-            <li>Local IndexedDB storage</li>
-            <li>Export to TXT/JSON</li>
-            <li>Complete data control</li>
-            <li>Delete anytime</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- How It Works Section -->
-  <section id="how-it-works" class="how-it-works">
-    <div class="container">
-      <h2>How It Works</h2>
-      <p class="section-subtitle">Simple. Secure. Private.</p>
-      
-      <div class="steps">
-        <div class="step">
-          <div class="step-number">1</div>
-          <h3>Upload Audio</h3>
-          <p>Drop your audio file or record directly in the browser. Supports MP3, WAV, M4A, and more.</p>
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container">
+        <div class="badge-row">
+          <span class="badge">100% Local</span>
+          <span class="badge">Free Forever</span>
+          <span class="badge">Open Source</span>
         </div>
         
-        <div class="step-arrow">→</div>
+        <h1>
+          Your audio doesn't<br>
+          belong in the cloud.
+        </h1>
         
-        <div class="step">
-          <div class="step-number">2</div>
-          <h3>AI Transcribes Locally</h3>
-          <p>Whisper AI processes your audio entirely in your browser. Nothing sent to the cloud.</p>
-        </div>
+        <p class="lead">
+          AI-powered transcription that runs entirely in your browser.
+          <br>Nothing leaves your device. Ever.
+        </p>
         
-        <div class="step-arrow">→</div>
+        <div class="cta-group">
+          <a href="/app" class="btn-primary">Start Transcribing</a>
+          <p class="hint">No account required to try</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why -->
+    <section class="why">
+      <div class="container">
+        <div class="split">
+          <div class="split-left">
+            <h2>Why this exists</h2>
+          </div>
+          <div class="split-right">
+            <p class="large">
+              Every major transcription service uploads your audio to their servers. 
+              Your medical notes. Legal consultations. Therapy sessions. Business meetings.
+            </p>
+            <p class="large">
+              They say they delete it. Some probably do. But why risk it?
+            </p>
+            <p class="large">
+              We built this because we needed transcription we could trust. 
+              Everything runs locally using WebAssembly and OpenAI's Whisper model.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="how">
+      <div class="container">
+        <h2>How it works</h2>
         
-        <div class="step">
-          <div class="step-number">3</div>
-          <h3>Download Text</h3>
-          <p>Get your transcription instantly. Edit, export, or delete. You're in complete control.</p>
+        <div class="flow">
+          <div class="flow-item">
+            <div class="flow-number">01</div>
+            <h3>Upload or record</h3>
+            <p>Drop an audio file or record directly. Your mic data never leaves the browser.</p>
+          </div>
+          
+          <div class="flow-item">
+            <div class="flow-number">02</div>
+            <h3>AI processes locally</h3>
+            <p>Whisper AI runs in your browser via WebAssembly. Zero network requests.</p>
+          </div>
+          
+          <div class="flow-item">
+            <div class="flow-number">03</div>
+            <h3>Done</h3>
+            <p>Read, edit, export, or delete your transcription. It's yours.</p>
+          </div>
+        </div>
+
+        <div class="technical-note">
+          <p>
+            <strong>Technical note:</strong> First use downloads the Whisper model (~75MB). 
+            After that, everything works offline. You can verify zero network activity 
+            during transcription by opening DevTools.
+          </p>
         </div>
       </div>
+    </section>
 
-      <div class="privacy-diagram">
-        <div class="diagram-box browser">
-          <strong>Your Browser</strong>
-          <p>🎤 Audio File<br>🤖 AI Processing<br>📝 Transcription</p>
-          <p class="diagram-note">Everything happens here</p>
-        </div>
-        <div class="diagram-vs">
-          <span>vs</span>
-        </div>
-        <div class="diagram-box cloud">
-          <strong>Cloud Services</strong>
-          <p>❌ No uploads<br>❌ No storage<br>❌ No tracking</p>
-          <p class="diagram-note">Never touched</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Use Cases Section -->
-  <section id="use-cases" class="use-cases">
-    <div class="container">
-      <h2>Perfect For Privacy-Conscious Professionals</h2>
-      <p class="section-subtitle">When your conversations must stay confidential</p>
-      
-      <div class="use-case-grid">
-        <div class="use-case">
-          <div class="use-case-icon">👨‍⚕️</div>
-          <h3>Healthcare Professionals</h3>
-          <p>HIPAA-compliant patient notes and consultations. Never risk patient data in the cloud.</p>
-        </div>
-
-        <div class="use-case">
-          <div class="use-case-icon">📰</div>
-          <h3>Journalists</h3>
-          <p>Protect source confidentiality. Sensitive interviews stay on your device, always.</p>
-        </div>
-
-        <div class="use-case">
-          <div class="use-case-icon">⚖️</div>
-          <h3>Legal Professionals</h3>
-          <p>Attorney-client privilege protected. Depositions and consultations remain confidential.</p>
-        </div>
-
-        <div class="use-case">
-          <div class="use-case-icon">💼</div>
-          <h3>Business Leaders</h3>
-          <p>Competitive strategy meetings and sensitive discussions. No corporate espionage risk.</p>
-        </div>
-
-        <div class="use-case">
-          <div class="use-case-icon">🎓</div>
-          <h3>Students</h3>
-          <p>Lecture notes without sharing recordings with big tech. Your education, your data.</p>
-        </div>
-
-        <div class="use-case">
-          <div class="use-case-icon">🎙️</div>
-          <h3>Content Creators</h3>
-          <p>Pre-production transcripts and drafts. Keep your creative process private until ready.</p>
+    <!-- Who -->
+    <section class="who">
+      <div class="container">
+        <h2>Who uses this</h2>
+        
+        <div class="use-cases">
+          <div class="use-case">
+            <h3>Healthcare providers</h3>
+            <p>Patient notes without HIPAA nightmares</p>
+          </div>
+          
+          <div class="use-case">
+            <h3>Journalists</h3>
+            <p>Source protection that actually works</p>
+          </div>
+          
+          <div class="use-case">
+            <h3>Legal professionals</h3>
+            <p>Attorney-client privilege preserved</p>
+          </div>
+          
+          <div class="use-case">
+            <h3>Therapists</h3>
+            <p>Session notes that stay confidential</p>
+          </div>
+          
+          <div class="use-case">
+            <h3>Researchers</h3>
+            <p>Interview data under your control</p>
+          </div>
+          
+          <div class="use-case">
+            <h3>Anyone who values privacy</h3>
+            <p>Because it's your data</p>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Comparison Section -->
-  <section class="comparison">
-    <div class="container">
-      <h2>How We Compare</h2>
-      <p class="section-subtitle">Privacy-first vs privacy-last</p>
-      
-      <div class="comparison-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Feature</th>
-              <th class="highlight">Transcriber</th>
-              <th>Otter.ai</th>
-              <th>Descript</th>
-              <th>Rev.ai</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Privacy</td>
-              <td class="highlight">✅ 100% Local</td>
-              <td>❌ Cloud Only</td>
-              <td>❌ Cloud Only</td>
-              <td>❌ Cloud Only</td>
-            </tr>
-            <tr>
-              <td>Offline Mode</td>
-              <td class="highlight">✅ Full Support</td>
-              <td>❌ Requires Internet</td>
-              <td>❌ Requires Internet</td>
-              <td>❌ Requires Internet</td>
-            </tr>
-            <tr>
-              <td>Cost</td>
-              <td class="highlight">✅ Free Forever</td>
-              <td>⚠️ 300 min/month</td>
-              <td>❌ $12+/month</td>
-              <td>❌ Pay per minute</td>
-            </tr>
-            <tr>
-              <td>Data Ownership</td>
-              <td class="highlight">✅ You Own It</td>
-              <td>⚠️ They Store It</td>
-              <td>⚠️ They Store It</td>
-              <td>⚠️ They Store It</td>
-            </tr>
-            <tr>
-              <td>Open Source</td>
-              <td class="highlight">✅ Yes</td>
-              <td>❌ Proprietary</td>
-              <td>❌ Proprietary</td>
-              <td>❌ Proprietary</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Comparison -->
+    <section class="comparison">
+      <div class="container">
+        <h2>How we compare</h2>
+        
+        <div class="compare-grid">
+          <div class="compare-item us">
+            <h3>Us</h3>
+            <ul>
+              <li>100% local processing</li>
+              <li>Free forever</li>
+              <li>No usage limits</li>
+              <li>Works offline</li>
+              <li>Open source</li>
+              <li>You own your data</li>
+            </ul>
+          </div>
+          
+          <div class="compare-item them">
+            <h3>Them</h3>
+            <ul>
+              <li>Cloud-only processing</li>
+              <li>$10-30/month</li>
+              <li>Usage caps</li>
+              <li>Internet required</li>
+              <li>Proprietary</li>
+              <li>They store your data</li>
+            </ul>
+          </div>
+        </div>
+
+        <p class="compare-note">
+          Look, services like Otter and Descript are great products. 
+          But if privacy matters to you, uploading sensitive audio to someone else's servers is a non-starter.
+        </p>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- FAQ Section -->
-  <section class="faq">
-    <div class="container">
-      <h2>Frequently Asked Questions</h2>
-      
-      <div class="faq-grid">
-        <div class="faq-item">
-          <h3>Is it really free?</h3>
-          <p>Yes, completely free forever. Since everything runs locally in your browser, there are no server costs to pass on to you.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>How accurate is it?</h3>
-          <p>We use OpenAI's Whisper AI model, the same technology powering many commercial services. Accuracy is on par with industry leaders.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>What audio formats are supported?</h3>
-          <p>MP3, WAV, M4A, OGG, and most common audio formats. You can also record directly in the browser.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Does it work offline?</h3>
-          <p>Yes! After the first use (when the AI model downloads), you can transcribe completely offline.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>What languages are supported?</h3>
-          <p>Currently English, with multi-language support coming soon. The AI model supports 90+ languages.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Where is my data stored?</h3>
-          <p>Everything is stored locally in your browser's IndexedDB. You can export or delete your data anytime.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Can I self-host it?</h3>
-          <p>Yes! We're open source. You can deploy to your own server or run it completely locally.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>What about mobile devices?</h3>
-          <p>Works on mobile browsers, though larger audio files may take longer to process due to device limitations.</p>
-        </div>
+    <!-- FAQ -->
+    <section class="faq">
+      <div class="container">
+        <h2>Questions</h2>
+        
+        <dl class="faq-list">
+          <dt>Is it actually free?</dt>
+          <dd>Yes. No trial, no credit card, no bullshit. Since everything runs in your browser, we have no server costs.</dd>
+          
+          <dt>How good is the transcription?</dt>
+          <dd>We use OpenAI's Whisper model - the same tech powering most paid services. Accuracy is comparable to anything you'd pay for.</dd>
+          
+          <dt>What audio formats work?</dt>
+          <dd>MP3, WAV, M4A, OGG, and most common formats. You can also record directly in the browser.</dd>
+          
+          <dt>Does it work offline?</dt>
+          <dd>After the first use (when it downloads the AI model), yes. Fully offline.</dd>
+          
+          <dt>Where's my data stored?</dt>
+          <dd>In your browser's IndexedDB. You can export or delete it anytime. We literally can't access it.</dd>
+          
+          <dt>Can I self-host it?</dt>
+          <dd>Yes. It's open source. Clone the repo, run it anywhere.</dd>
+          
+          <dt>What about mobile?</dt>
+          <dd>Works on mobile browsers, but processing is slower on phones. Best on desktop.</dd>
+          
+          <dt>How do you make money?</dt>
+          <dd>We don't. This is a tool we built for ourselves and decided to share. Maybe we'll add paid features later, but the core will always be free.</dd>
+        </dl>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- CTA Section -->
-  <section class="cta">
-    <div class="container">
-      <h2>Ready to Transcribe Privately?</h2>
-      <p>Start protecting your conversations today. No credit card required.</p>
-      <div class="cta-buttons">
-        <a href="/app" class="btn-primary btn-large">Get Started Free</a>
-        <a href="https://github.com/offbyone-ai/transcriber-i-hardly-knew-her" class="btn-outline btn-large" target="_blank" rel="noopener">View on GitHub</a>
+    <!-- CTA -->
+    <section class="final-cta">
+      <div class="container">
+        <h2>Try it now</h2>
+        <p>No sign-up required.</p>
+        <a href="/app" class="btn-primary btn-large">Start Transcribing</a>
+        <p class="footnote">
+          <a href="https://github.com/offbyone-ai/transcriber-i-hardly-knew-her" target="_blank">View source on GitHub</a>
+        </p>
       </div>
-      <p class="cta-note">Join thousands of privacy-conscious professionals</p>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <!-- Footer -->
   <footer class="footer">
     <div class="container">
-      <div class="footer-content">
-        <div class="footer-section">
-          <h4>🔒 Transcriber</h4>
-          <p>Private, offline audio transcription powered by AI.</p>
+      <div class="footer-grid">
+        <div>
+          <p><strong>Transcriber</strong></p>
+          <p>Built by people who care about privacy.</p>
         </div>
         
-        <div class="footer-section">
-          <h4>Product</h4>
+        <div>
+          <p><strong>Links</strong></p>
           <ul>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#how-it-works">How It Works</a></li>
-            <li><a href="#use-cases">Use Cases</a></li>
-            <li><a href="/app">Get Started</a></li>
+            <li><a href="https://github.com/offbyone-ai/transcriber-i-hardly-knew-her" target="_blank">GitHub</a></li>
+            <li><a href="https://github.com/offbyone-ai/transcriber-i-hardly-knew-her/issues" target="_blank">Report Issue</a></li>
+            <li><a href="/app">Launch App</a></li>
           </ul>
         </div>
         
-        <div class="footer-section">
-          <h4>Resources</h4>
+        <div>
+          <p><strong>Legal</strong></p>
           <ul>
-            <li><a href="https://github.com/offbyone-ai/transcriber-i-hardly-knew-her" target="_blank" rel="noopener">GitHub</a></li>
-            <li><a href="https://github.com/offbyone-ai/transcriber-i-hardly-knew-her/blob/main/docs/DEPLOYMENT.md" target="_blank" rel="noopener">Documentation</a></li>
-            <li><a href="https://github.com/offbyone-ai/transcriber-i-hardly-knew-her/issues" target="_blank" rel="noopener">Report Issue</a></li>
-          </ul>
-        </div>
-        
-        <div class="footer-section">
-          <h4>Legal</h4>
-          <ul>
-            <li><a href="#privacy">Privacy Policy</a></li>
-            <li><a href="#terms">Terms of Service</a></li>
-            <li><a href="https://github.com/offbyone-ai/transcriber-i-hardly-knew-her/blob/main/LICENSE" target="_blank" rel="noopener">License</a></li>
+            <li><a href="https://github.com/offbyone-ai/transcriber-i-hardly-knew-her/blob/main/LICENSE" target="_blank">MIT License</a></li>
           </ul>
         </div>
       </div>
       
       <div class="footer-bottom">
-        <p>&copy; 2025 Transcriber. Open source under MIT License.</p>
-        <p>Your privacy is our priority. Always.</p>
+        <p>Open source. No tracking. No ads. No bullshit.</p>
       </div>
     </div>
   </footer>
