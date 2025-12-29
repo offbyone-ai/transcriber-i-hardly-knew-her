@@ -6,8 +6,8 @@ import { auth } from './auth'
 
 const app = new Hono()
 
-// CORS configuration
-app.use(cors({
+// CORS configuration - only for API routes
+app.use('/api/*', cors({
   origin: (origin) => origin || 'http://localhost:5173',
   credentials: true,
 }))
