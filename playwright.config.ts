@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1, // Single worker for sequential tests
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -21,8 +21,8 @@ export default defineConfig({
     },
   ],
 
-  // Run dev server before tests
-  webServer: {
+  // Run dev server before tests (unless PLAYWRIGHT_BASE_URL is set)
+  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
     command: 'bun run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
