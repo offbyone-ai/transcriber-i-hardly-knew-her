@@ -190,7 +190,9 @@ export default function RecordPage() {
     }
   }
 
-  async function startRecording() {
+  async function startRecording(options?: { ignoreSystemAudio?: boolean }) {
+    const shouldCaptureSystemAudio = systemAudioEnabled && !options?.ignoreSystemAudio
+
     setError(null)
     setSystemAudioError(null)
     setTranscriptSegments([])
@@ -213,7 +215,7 @@ export default function RecordPage() {
       streamRef.current = micStream
       
       // If system audio is enabled, get display media with audio
-      if (systemAudioEnabled) {
+      if (shouldCaptureSystemAudio) {
         try {
           console.log('[System Audio] Requesting display media with audio...')
           displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -229,7 +231,13 @@ export default function RecordPage() {
           const audioTracks = displayStream.getAudioTracks()
           if (audioTracks.length === 0) {
             console.warn('[System Audio] No audio track in display stream. User may not have enabled "Share audio"')
-            setSystemAudioError('No audio captured from tab. Make sure to check "Share audio" when sharing.')
+            setSystemAudioError('No audio captured. Did you forget to check the "Share audio" box?')
+            // Don't fail completely, just warn? Or fail?
+            // Current behavior: warn but continue? No, usually we want to retry.
+            // Let's fail so they can fix it.
+            displayStream.getTracks().forEach(t => t.stop())
+            micStream.getTracks().forEach(t => t.stop())
+            return
           } else {
             console.log('[System Audio] Got display audio track:', audioTracks[0].label)
           }
@@ -264,9 +272,9 @@ export default function RecordPage() {
           streamRef.current = null
           
           if (displayError instanceof Error && displayError.name === 'NotAllowedError') {
-            setSystemAudioError('Screen sharing was cancelled. Please try again and select a tab to share.')
+            setSystemAudioError('Sharing cancelled. You must select a tab and click "Share" to record system audio.')
           } else {
-            setSystemAudioError('Failed to capture system audio. Please try again.')
+            setSystemAudioError('Failed to capture system audio. Browser may not support it or permission was denied.')
           }
           return
         }
@@ -611,6 +619,12 @@ export default function RecordPage() {
     startRecording()
   }
 
+  function continueWithoutSystemAudio() {
+    setSystemAudioError(null)
+    setSystemAudioEnabled(false)
+    startRecording({ ignoreSystemAudio: true })
+  }
+
   const showWarning = recordingTime >= ONE_HOUR && recordingTime < TWO_HOURS
 
   return (
@@ -666,20 +680,30 @@ export default function RecordPage() {
         {/* System Audio Error with Retry */}
         {systemAudioError && !isRecording && (
           <Card className="p-3 sm:p-4 bg-destructive/10 border-destructive">
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-col gap-3">
               <div className="flex items-start gap-2 text-destructive">
                 <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
                 <p className="text-xs sm:text-sm">{systemAudioError}</p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={retrySystemAudio}
-                className="flex items-center gap-1"
-              >
-                <RefreshCw size={14} />
-                Retry
-              </Button>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={continueWithoutSystemAudio}
+                  className="text-xs h-8 text-muted-foreground hover:text-foreground"
+                >
+                  Continue without system audio
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={retrySystemAudio}
+                  className="flex items-center gap-1 h-8"
+                >
+                  <RefreshCw size={14} />
+                  Retry
+                </Button>
+              </div>
             </div>
           </Card>
         )}
@@ -823,7 +847,7 @@ export default function RecordPage() {
                 <div className="flex items-center gap-3 sm:gap-4">
                   {!isRecording ? (
                     <Button
-                      onClick={startRecording}
+                      onClick={() => startRecording()}
                       size="lg"
                       className="w-16 h-16 sm:w-20 sm:h-20 rounded-full"
                       disabled={!session}
