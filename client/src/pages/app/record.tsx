@@ -6,7 +6,7 @@ import { db, addRecording } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select } from '@/components/ui/select'
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card } from '@/components/ui/card'
 import { useSpeechRecognition, type TranscriptSegment } from '@/hooks/use-speech-recognition'
@@ -732,7 +732,7 @@ export default function RecordPage() {
                     <Checkbox
                       id="live-transcription"
                       checked={liveTranscriptionEnabled}
-                      onCheckedChange={(checked) => setLiveTranscriptionEnabled(checked as boolean)}
+                      onCheckedChange={(checked) => setLiveTranscriptionEnabled(checked === true)}
                       disabled={!speechRecognition.isSupported}
                     />
                   </div>
@@ -749,15 +749,19 @@ export default function RecordPage() {
                       <Label htmlFor="language" className="text-sm">Language</Label>
                     </div>
                     <Select
-                      id="language"
                       value={selectedLanguage}
                       onValueChange={setSelectedLanguage}
                     >
-                      {LANGUAGE_OPTIONS.map((lang) => (
-                        <option key={lang.code} value={lang.code}>
-                          {lang.label}
-                        </option>
-                      ))}
+                      <SelectTrigger id="language">
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGE_OPTIONS.map((lang) => (
+                          <SelectItem key={lang.code} value={lang.code}>
+                            {lang.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
                 )}
@@ -774,7 +778,7 @@ export default function RecordPage() {
                     <Checkbox
                       id="system-audio"
                       checked={systemAudioEnabled}
-                      onCheckedChange={setSystemAudioEnabled}
+                      onCheckedChange={(checked) => setSystemAudioEnabled(checked === true)}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -1028,17 +1032,21 @@ export default function RecordPage() {
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
             <Select
-              id="subject"
               value={selectedSubjectId}
               onValueChange={setSelectedSubjectId}
               disabled={isRecording || isProcessingUpload}
             >
-              <option value="">No subject (optional)</option>
-              {subjects.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.name}
-                </option>
-              ))}
+              <SelectTrigger id="subject">
+                <SelectValue placeholder="No subject (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No subject (optional)</SelectItem>
+                {subjects.map((subject) => (
+                  <SelectItem key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
           
