@@ -142,7 +142,7 @@ export default function RecordPage() {
       console.log('Audio analyzer setup complete, starting visualization')
       updateAudioLevel()
 
-      // Create MediaRecorder with timeslice for real-time transcription
+      // Create MediaRecorder
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       })
@@ -158,72 +158,93 @@ export default function RecordPage() {
       
       mediaRecorder.onstop = handleRecordingComplete
       
-      // Start recording with timeslice to ensure ondataavailable fires regularly
-      // We need this to collect audio chunks for real-time transcription
-      mediaRecorder.start(1000) // Fire ondataavailable every second
-      mediaRecorderRef.current = mediaRecorder
-      
       // Setup real-time transcription if enabled
       if (enableRealtime) {
         const modelName = getPreferredModel()
-        let lastTranscribedLength = 0
+        const CHUNK_DURATION = 10000 // 10 seconds
+        let realtimeChunkBuffer: Blob[] = [] // Buffer for current 10s chunk
+        let hasTranscribedFirstChunk = false
         
-        // Process entire recording so far every 10 seconds
+        // Handler for when MediaRecorder collects data (every 1 second)
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            console.log('[Recording] Data available, size:', event.data.size, 'bytes')
+            // Add to both full recording and realtime buffer
+            audioChunksRef.current.push(event.data)
+            realtimeChunkBuffer.push(event.data)
+          }
+        }
+        
+        // Start recording with 1-second timeslice to collect data
+        mediaRecorder.start(1000)
+        mediaRecorderRef.current = mediaRecorder
+        
+        // Process only NEW audio every 10 seconds
         realtimeIntervalRef.current = window.setInterval(async () => {
-          if (audioChunksRef.current.length === 0) {
-            console.log('[Real-time] No audio data yet, skipping')
+          if (realtimeChunkBuffer.length === 0) {
+            console.log('[Real-time] No new audio data in buffer, skipping')
             return
           }
           
           // Require at least 5 seconds of audio before first transcription
-          if (audioChunksRef.current.length < 5 && lastTranscribedLength === 0) {
+          if (realtimeChunkBuffer.length < 5 && !hasTranscribedFirstChunk) {
             console.log('[Real-time] Waiting for more audio data before first transcription...')
             return
           }
           
-          // Create blob from ALL audio collected so far
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' })
-          console.log('[Real-time] Transcribing full recording so far, size:', audioBlob.size, 'bytes, chunks:', audioChunksRef.current.length)
+          // Create blob from ONLY the new chunk buffer (last 10 seconds)
+          const chunkBlob = new Blob(realtimeChunkBuffer, { type: 'audio/webm;codecs=opus' })
+          console.log('[Real-time] Transcribing NEW chunk only, size:', chunkBlob.size, 'bytes, buffer length:', realtimeChunkBuffer.length)
+          
+          // Clear the buffer for next chunk
+          const currentBuffer = realtimeChunkBuffer
+          realtimeChunkBuffer = []
           
           setIsRealtimeProcessing(true)
           
           try {
             const result = await transcribeAudio({
-              audioBlob,
+              audioBlob: chunkBlob,
               modelName,
               language: 'en',
             })
             
             console.log('[Real-time] Transcription complete, text length:', result.text.length, 'full text:', result.text)
             
-            // If result is empty and we haven't transcribed anything yet, warn user
-            if (result.text.length === 0 && lastTranscribedLength === 0) {
-              console.warn('[Real-time] No speech detected yet. Make sure you are speaking clearly into the microphone.')
+            // Mark that we've transcribed at least one chunk
+            hasTranscribedFirstChunk = true
+            
+            // If result is empty and this is first chunk, warn user
+            if (result.text.length === 0 && !hasTranscribedFirstChunk) {
+              console.warn('[Real-time] No speech detected in first chunk. Make sure you are speaking clearly into the microphone.')
             }
             
-            // Only show NEW text (after what we've already shown)
-            const newText = result.text.substring(lastTranscribedLength)
-            
-            if (newText.trim()) {
-              lastTranscribedLength = result.text.length
-              
+            // Show the transcribed text for this chunk
+            if (result.text.trim()) {
               const chunk: RealtimeTranscriptionChunk = {
-                text: newText,
+                text: result.text,
                 timestamp: recordingTimeRef.current,
-                segments: result.segments.filter((seg: any) => seg.start >= lastTranscribedLength / 10) // Rough estimate
+                segments: result.segments
               }
               
               console.log('[Real-time] Adding new chunk:', chunk)
               setRealtimeChunks(prev => [...prev, chunk])
             } else {
-              console.log('[Real-time] No new text to add (text is empty or already shown)')
+              console.log('[Real-time] No text in this chunk (silence or noise)')
             }
           } catch (error) {
             console.error('[Real-time] Transcription error:', error)
+            // On error, restore buffer so we don't lose audio
+            realtimeChunkBuffer = currentBuffer
           } finally {
             setIsRealtimeProcessing(false)
           }
-        }, 10000) // Process every 10 seconds
+        }, CHUNK_DURATION)
+      } else {
+        // Regular recording without real-time transcription
+        // Start recording with timeslice to ensure ondataavailable fires regularly
+        mediaRecorder.start(1000)
+        mediaRecorderRef.current = mediaRecorder
       }
       
       setIsRecording(true)
