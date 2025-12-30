@@ -25,9 +25,9 @@ app.use('*', async (c, next) => {
   if (elapsed < 1) {
     timeStr = `${(elapsed * 1000).toFixed(0)}μs`
   } else if (elapsed < 1000) {
-    timeStr = `${elapsed.toFixed(2)}ms`
+    timeStr = `${elapsed.toFixed(0)}ms`
   } else {
-    timeStr = `${(elapsed / 1000).toFixed(2)}s`
+    timeStr = `${(elapsed / 1000).toFixed(1)}s`
   }
   
   console.log(`--> ${method} ${path} ${status} ${timeStr}`)
