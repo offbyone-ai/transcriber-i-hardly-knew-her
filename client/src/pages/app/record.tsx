@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
-import { RealtimeTranscriber, type RealtimeTranscriptionChunk } from '@/lib/transcription'
+import { type RealtimeTranscriptionChunk, transcribeAudio } from '@/lib/transcription'
 import { getPreferredModel } from '@/lib/model-manager'
 import type { Subject, Recording } from '@shared/types'
 
@@ -33,7 +33,6 @@ export default function RecordPage() {
   const [realtimeEnabled, setRealtimeEnabled] = useState(false)
   const [realtimeChunks, setRealtimeChunks] = useState<RealtimeTranscriptionChunk[]>([])
   const [isRealtimeProcessing, setIsRealtimeProcessing] = useState(false)
-  const realtimeTranscriberRef = useRef<RealtimeTranscriber | null>(null)
   const realtimeIntervalRef = useRef<number | null>(null)
   const recordingTimeRef = useRef<number>(0)
   
@@ -154,51 +153,71 @@ export default function RecordPage() {
         if (event.data.size > 0) {
           console.log('[Recording] Data available, size:', event.data.size, 'bytes')
           audioChunksRef.current.push(event.data)
-          
-          // Also feed to real-time transcriber if enabled
-          if (enableRealtime && realtimeTranscriberRef.current) {
-            console.log('[Real-time] Adding audio data to transcriber, size:', event.data.size)
-            realtimeTranscriberRef.current.addAudioData(event.data)
-          }
         }
       }
       
       mediaRecorder.onstop = handleRecordingComplete
       
-      // Start recording with timeslice for real-time chunks
-      // Use 3-second intervals for more complete audio chunks
-      mediaRecorder.start(enableRealtime ? 3000 : undefined)
+      // Start recording - NO timeslicing for cleaner audio files
+      mediaRecorder.start()
       mediaRecorderRef.current = mediaRecorder
       
       // Setup real-time transcription if enabled
       if (enableRealtime) {
         const modelName = getPreferredModel()
-        realtimeTranscriberRef.current = new RealtimeTranscriber(
-          modelName,
-          'en',
-          (chunk) => {
-            console.log('Real-time chunk received:', chunk)
-            setRealtimeChunks(prev => [...prev, chunk])
+        let lastTranscribedLength = 0
+        
+        // Process entire recording so far every 10 seconds
+        realtimeIntervalRef.current = window.setInterval(async () => {
+          if (audioChunksRef.current.length === 0) {
+            console.log('[Real-time] No audio data yet, skipping')
+            return
+          }
+          
+          // Stop and restart MediaRecorder to get a complete WebM file
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            console.log('[Real-time] Requesting data from MediaRecorder')
+            mediaRecorderRef.current.requestData()
+            
+            // Wait a bit for ondataavailable to fire
+            await new Promise(resolve => setTimeout(resolve, 100))
+          }
+          
+          // Create blob from ALL audio collected so far
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' })
+          console.log('[Real-time] Transcribing full recording so far, size:', audioBlob.size, 'bytes')
+          
+          setIsRealtimeProcessing(true)
+          
+          try {
+            const result = await transcribeAudio({
+              audioBlob,
+              modelName,
+              language: 'en',
+            })
+            
+            console.log('[Real-time] Transcription complete, text length:', result.text.length)
+            
+            // Only show NEW text (after what we've already shown)
+            const newText = result.text.substring(lastTranscribedLength)
+            lastTranscribedLength = result.text.length
+            
+            if (newText.trim()) {
+              const chunk: RealtimeTranscriptionChunk = {
+                text: newText,
+                timestamp: recordingTimeRef.current,
+                segments: result.segments.filter((seg: any) => seg.start >= lastTranscribedLength / 10) // Rough estimate
+              }
+              
+              console.log('[Real-time] Adding new chunk:', chunk)
+              setRealtimeChunks(prev => [...prev, chunk])
+            }
+          } catch (error) {
+            console.error('[Real-time] Transcription error:', error)
+          } finally {
             setIsRealtimeProcessing(false)
           }
-        )
-        realtimeTranscriberRef.current.start()
-        
-        // Process chunks every 9 seconds (need 3 chunks of 3s each for reliable decoding)
-        realtimeIntervalRef.current = window.setInterval(() => {
-          if (realtimeTranscriberRef.current) {
-            console.log('[Real-time] Starting to process chunk...')
-            setIsRealtimeProcessing(true)
-            realtimeTranscriberRef.current.processCurrentChunk()
-              .then(() => {
-                console.log('[Real-time] Chunk processed successfully')
-              })
-              .catch(err => {
-                console.error('[Real-time] Error processing chunk:', err)
-                setIsRealtimeProcessing(false)
-              })
-          }
-        }, 9000) // Process every 9 seconds
+        }, 10000) // Process every 10 seconds
       }
       
       setIsRecording(true)
@@ -250,13 +269,6 @@ export default function RecordPage() {
     if (realtimeIntervalRef.current) {
       clearInterval(realtimeIntervalRef.current)
       realtimeIntervalRef.current = null
-    }
-    
-    if (realtimeTranscriberRef.current) {
-      realtimeTranscriberRef.current.finish().catch(err => {
-        console.error('Error finishing real-time transcription:', err)
-      })
-      realtimeTranscriberRef.current = null
     }
     
     setIsRecording(false)
@@ -667,7 +679,7 @@ export default function RecordPage() {
                   </div>
                   {realtimeChunks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground text-sm">
-                      <p>Transcription will appear here after 9 seconds of recording...</p>
+                      <p>Transcription will appear here after 10 seconds of recording...</p>
                       <p className="text-xs mt-2">First chunk may take 30-60s to process</p>
                     </div>
                   ) : (
@@ -796,8 +808,7 @@ export default function RecordPage() {
             <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
               <p className="text-xs sm:text-sm text-foreground">
                 <strong>Live Transcription Mode:</strong> Audio will be transcribed in real-time as you record. 
-                Transcription appears every 9 seconds (processing takes 10-30s per chunk). 
-                This mode uses more CPU and battery.
+                New transcription appears every 10 seconds. This mode uses more CPU and battery.
               </p>
             </div>
           )}
