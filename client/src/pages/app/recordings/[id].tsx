@@ -76,8 +76,9 @@ export default function RecordingDetailPage() {
             setRecording(updatedRecording)
           }
         } catch (error) {
-          console.error('[Recording Detail] Failed to fix duration:', error)
-          setDuration(recordingData.duration)
+          console.warn('[Recording Detail] Could not fix duration (file may be corrupt):', error instanceof Error ? error.message : error)
+          // Fall back to using 0 or a placeholder
+          setDuration(recordingData.duration || 0)
         }
       } else {
         setDuration(recordingData.duration)

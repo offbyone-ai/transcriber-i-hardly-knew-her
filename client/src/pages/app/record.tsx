@@ -158,8 +158,9 @@ export default function RecordPage() {
       
       mediaRecorder.onstop = handleRecordingComplete
       
-      // Start recording - NO timeslicing for cleaner audio files
-      mediaRecorder.start()
+      // Start recording with timeslice to ensure ondataavailable fires regularly
+      // We need this to collect audio chunks for real-time transcription
+      mediaRecorder.start(1000) // Fire ondataavailable every second
       mediaRecorderRef.current = mediaRecorder
       
       // Setup real-time transcription if enabled
@@ -174,18 +175,9 @@ export default function RecordPage() {
             return
           }
           
-          // Stop and restart MediaRecorder to get a complete WebM file
-          if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            console.log('[Real-time] Requesting data from MediaRecorder')
-            mediaRecorderRef.current.requestData()
-            
-            // Wait a bit for ondataavailable to fire
-            await new Promise(resolve => setTimeout(resolve, 100))
-          }
-          
           // Create blob from ALL audio collected so far
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' })
-          console.log('[Real-time] Transcribing full recording so far, size:', audioBlob.size, 'bytes')
+          console.log('[Real-time] Transcribing full recording so far, size:', audioBlob.size, 'bytes, chunks:', audioChunksRef.current.length)
           
           setIsRealtimeProcessing(true)
           

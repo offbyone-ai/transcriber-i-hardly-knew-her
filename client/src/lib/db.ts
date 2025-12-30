@@ -83,19 +83,36 @@ function getAudioDuration(blob: Blob): Promise<number> {
   return new Promise((resolve, reject) => {
     const audio = new Audio()
     const url = URL.createObjectURL(blob)
+    let resolved = false
+    
+    // Timeout after 5 seconds to prevent hanging
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        URL.revokeObjectURL(url)
+        resolved = true
+        reject(new Error('Timeout waiting for audio metadata'))
+      }
+    }, 5000)
     
     audio.addEventListener('loadedmetadata', () => {
+      if (resolved) return
+      clearTimeout(timeout)
       URL.revokeObjectURL(url)
-      if (isFinite(audio.duration)) {
+      resolved = true
+      
+      if (isFinite(audio.duration) && audio.duration > 0) {
         resolve(audio.duration)
       } else {
-        reject(new Error('Invalid audio duration'))
+        reject(new Error(`Invalid audio duration: ${audio.duration}`))
       }
     })
     
     audio.addEventListener('error', () => {
+      if (resolved) return
+      clearTimeout(timeout)
       URL.revokeObjectURL(url)
-      reject(new Error('Failed to load audio metadata'))
+      resolved = true
+      reject(new Error(`Failed to load audio metadata: ${audio.error?.message || 'Unknown error'}`))
     })
     
     audio.src = url
