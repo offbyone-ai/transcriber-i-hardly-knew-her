@@ -66,7 +66,7 @@ export default function RecordPage() {
   
   // Form state
   const [subjects, setSubjects] = useState<Subject[]>([])
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('')
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('__none__')
   const [title, setTitle] = useState('')
   
   // Audio state
@@ -184,7 +184,7 @@ export default function RecordPage() {
       setSubjects(userSubjects)
       
       // Auto-select first subject if available
-      if (userSubjects.length > 0 && !selectedSubjectId) {
+      if (userSubjects.length > 0 && selectedSubjectId === '__none__') {
         setSelectedSubjectId(userSubjects[0].id)
       }
     } catch (err) {
@@ -431,7 +431,7 @@ export default function RecordPage() {
       
       const recording: Recording = {
         id: crypto.randomUUID(),
-        subjectId: selectedSubjectId || undefined,
+        subjectId: selectedSubjectId === '__none__' ? undefined : selectedSubjectId,
         userId: session!.user!.id as string,
         title: title.trim() || undefined,
         audioBlob,
@@ -586,7 +586,7 @@ export default function RecordPage() {
     try {
       const recording: Recording = {
         id: crypto.randomUUID(),
-        subjectId: selectedSubjectId || undefined,
+        subjectId: selectedSubjectId === '__none__' ? undefined : selectedSubjectId,
         userId: session!.user!.id as string,
         title: title.trim() || undefined,
         audioBlob: selectedFile,
@@ -1040,7 +1040,7 @@ export default function RecordPage() {
                 <SelectValue placeholder="No subject (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No subject (optional)</SelectItem>
+                <SelectItem value="__none__">No subject (optional)</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject.id} value={subject.id}>
                     {subject.name}
