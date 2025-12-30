@@ -1,23 +1,35 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mic, Square, Play, Pause, AlertCircle, Upload, Loader2, Monitor } from 'lucide-react'
+import { Mic, Square, Play, Pause, AlertCircle, Upload, Monitor, RefreshCw, Languages } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { db, addRecording } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
-import { type RealtimeTranscriptionChunk, transcribePCM } from '@/lib/transcription'
-import { getPreferredModel } from '@/lib/model-manager'
-import { LiveAudioCapture, type LiveAudioChunk } from '@/lib/live-audio-capture'
+import { useSpeechRecognition, type TranscriptSegment } from '@/hooks/use-speech-recognition'
 import type { Subject, Recording } from '@shared/types'
+
+// Common language options for speech recognition
+const LANGUAGE_OPTIONS = [
+  { code: 'en-US', label: 'English (US)' },
+  { code: 'en-GB', label: 'English (UK)' },
+  { code: 'es-ES', label: 'Spanish' },
+  { code: 'fr-FR', label: 'French' },
+  { code: 'de-DE', label: 'German' },
+  { code: 'it-IT', label: 'Italian' },
+  { code: 'pt-BR', label: 'Portuguese (BR)' },
+  { code: 'zh-CN', label: 'Chinese (Simplified)' },
+  { code: 'ja-JP', label: 'Japanese' },
+  { code: 'ko-KR', label: 'Korean' },
+]
 
 export default function RecordPage() {
   const navigate = useNavigate()
   const { data: session } = useSession()
   
-  // Tab state
-  const [mode, setMode] = useState<'record' | 'upload' | 'live' | 'tab'>('record')
+  // Mode state (simplified to just record or upload)
+  const [mode, setMode] = useState<'record' | 'upload'>('record')
   
   // Recording state
   const [isRecording, setIsRecording] = useState(false)
@@ -30,14 +42,25 @@ export default function RecordPage() {
   const [uploadDuration, setUploadDuration] = useState<number | null>(null)
   const [isProcessingUpload, setIsProcessingUpload] = useState(false)
   
-  // Real-time transcription state
-  const [realtimeEnabled, setRealtimeEnabled] = useState(false)
-  const [realtimeChunks, setRealtimeChunks] = useState<RealtimeTranscriptionChunk[]>([])
-  const [isRealtimeProcessing, setIsRealtimeProcessing] = useState(false)
-  const [isProcessingFinal, setIsProcessingFinal] = useState(false)
-  const realtimeIntervalRef = useRef<number | null>(null)
+  // Live transcription options (toggles instead of separate modes)
+  const [liveTranscriptionEnabled, setLiveTranscriptionEnabled] = useState(false)
+  const [systemAudioEnabled, setSystemAudioEnabled] = useState(false)
+  const [selectedLanguage, setSelectedLanguage] = useState(() => {
+    // Try to match browser language to our options
+    const browserLang = navigator?.language || 'en-US'
+    const match = LANGUAGE_OPTIONS.find(opt => opt.code === browserLang || opt.code.startsWith(browserLang.split('-')[0]))
+    return match?.code || 'en-US'
+  })
+  const [noSpeechWarning, setNoSpeechWarning] = useState(false)
+  const [systemAudioError, setSystemAudioError] = useState<string | null>(null)
+  
+  // Transcript segments from Web Speech API (newest first)
+  const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([])
+  const [interimText, setInterimText] = useState('')
+  
+  // Track recording time for transcript timestamps
   const recordingTimeRef = useRef<number>(0)
-  const liveAudioCaptureRef = useRef<LiveAudioCapture | null>(null)
+  const noSpeechTimeoutRef = useRef<number | null>(null)
   
   // Form state
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -49,7 +72,7 @@ export default function RecordPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
-  const displayStreamRef = useRef<MediaStream | null>(null) // For tab audio capture
+  const displayStreamRef = useRef<MediaStream | null>(null) // For system audio capture
   const timerRef = useRef<number | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
@@ -57,6 +80,7 @@ export default function RecordPage() {
   
   const ONE_HOUR = 3600 // seconds
   const TWO_HOURS = 7200 // seconds
+  const NO_SPEECH_WARNING_DELAY = 30000 // 30 seconds
   
   const ACCEPTED_AUDIO_TYPES = [
     'audio/mpeg', // MP3
@@ -75,6 +99,53 @@ export default function RecordPage() {
     'audio/x-flac',
   ]
 
+  // Web Speech Recognition hook
+  const speechRecognition = useSpeechRecognition({
+    language: selectedLanguage,
+    continuous: true,
+    interimResults: true,
+    onResult: (text, isFinal) => {
+      // Got speech, clear warning
+      setNoSpeechWarning(false)
+      if (noSpeechTimeoutRef.current) {
+        clearTimeout(noSpeechTimeoutRef.current)
+        noSpeechTimeoutRef.current = null
+      }
+      // Reset the no-speech warning timer
+      startNoSpeechTimer()
+      
+      if (isFinal && text.trim()) {
+        setTranscriptSegments(prev => [{
+          text: text.trim(),
+          timestamp: recordingTimeRef.current,
+          isFinal: true
+        }, ...prev])
+        setInterimText('')
+      } else {
+        setInterimText(text)
+      }
+    },
+    onError: (err) => {
+      console.error('[SpeechRecognition] Error:', err)
+      // Don't show error for common non-fatal issues
+      if (!err.includes('no-speech') && !err.includes('aborted')) {
+        setError(err)
+      }
+    }
+  })
+
+  // Start timer to warn if no speech detected
+  function startNoSpeechTimer() {
+    if (noSpeechTimeoutRef.current) {
+      clearTimeout(noSpeechTimeoutRef.current)
+    }
+    noSpeechTimeoutRef.current = window.setTimeout(() => {
+      if (isRecording && liveTranscriptionEnabled && transcriptSegments.length === 0) {
+        setNoSpeechWarning(true)
+      }
+    }, NO_SPEECH_WARNING_DELAY)
+  }
+
   // Load subjects on mount
   useEffect(() => {
     loadSubjects()
@@ -92,6 +163,9 @@ export default function RecordPage() {
       }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
+      }
+      if (noSpeechTimeoutRef.current) {
+        clearTimeout(noSpeechTimeoutRef.current)
       }
     }
   }, [])
@@ -118,17 +192,17 @@ export default function RecordPage() {
 
   async function startRecording() {
     setError(null)
-    setRealtimeChunks([])
-    
-    // Enable real-time transcription if in 'live' or 'tab' mode
-    const enableRealtime = mode === 'live' || mode === 'tab' || realtimeEnabled
+    setSystemAudioError(null)
+    setTranscriptSegments([])
+    setInterimText('')
+    setNoSpeechWarning(false)
     
     try {
       let micStream: MediaStream | null = null
       let displayStream: MediaStream | null = null
       let combinedStream: MediaStream
       
-      // Get microphone stream (for all modes)
+      // Get microphone stream
       micStream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -138,10 +212,10 @@ export default function RecordPage() {
       })
       streamRef.current = micStream
       
-      // For tab mode, also get display media with audio
-      if (mode === 'tab') {
+      // If system audio is enabled, get display media with audio
+      if (systemAudioEnabled) {
         try {
-          console.log('[Tab Mode] Requesting display media with audio...')
+          console.log('[System Audio] Requesting display media with audio...')
           displayStream = await navigator.mediaDevices.getDisplayMedia({
             video: true, // Required, but we'll ignore it
             audio: {
@@ -154,15 +228,15 @@ export default function RecordPage() {
           // Check if we got audio tracks
           const audioTracks = displayStream.getAudioTracks()
           if (audioTracks.length === 0) {
-            console.warn('[Tab Mode] No audio track in display stream. User may not have enabled "Share audio"')
-            setError('No audio captured from tab. Make sure to check "Share audio" when sharing.')
+            console.warn('[System Audio] No audio track in display stream. User may not have enabled "Share audio"')
+            setSystemAudioError('No audio captured from tab. Make sure to check "Share audio" when sharing.')
           } else {
-            console.log('[Tab Mode] Got display audio track:', audioTracks[0].label)
+            console.log('[System Audio] Got display audio track:', audioTracks[0].label)
           }
           
           // Stop video track - we only need audio
           displayStream.getVideoTracks().forEach(track => {
-            console.log('[Tab Mode] Stopping video track:', track.label)
+            console.log('[System Audio] Stopping video track:', track.label)
             track.stop()
           })
           
@@ -178,26 +252,26 @@ export default function RecordPage() {
           if (audioTracks.length > 0) {
             const displaySource = audioContext.createMediaStreamSource(displayStream)
             displaySource.connect(destination)
-            console.log('[Tab Mode] Mixed mic + tab audio')
+            console.log('[System Audio] Mixed mic + system audio')
           }
           
           combinedStream = destination.stream
           
         } catch (displayError) {
-          console.error('[Tab Mode] Failed to get display media:', displayError)
+          console.error('[System Audio] Failed to get display media:', displayError)
           // Clean up mic stream
           micStream.getTracks().forEach(track => track.stop())
           streamRef.current = null
           
           if (displayError instanceof Error && displayError.name === 'NotAllowedError') {
-            setError('Screen sharing was cancelled. Please try again and select a tab to share.')
+            setSystemAudioError('Screen sharing was cancelled. Please try again and select a tab to share.')
           } else {
-            setError('Failed to capture tab audio. Please try again.')
+            setSystemAudioError('Failed to capture system audio. Please try again.')
           }
           return
         }
       } else {
-        // Regular modes - just use mic stream
+        // Regular mode - just use mic stream
         combinedStream = micStream
       }
 
@@ -231,54 +305,15 @@ export default function RecordPage() {
       mediaRecorder.onstop = handleRecordingComplete
       mediaRecorderRef.current = mediaRecorder
       
-      // Start recording - different modes for live vs regular
-      if (enableRealtime) {
-        // LIVE/TAB MODE: Start MediaRecorder WITHOUT timeslice (produces valid WebM on stop)
-        // Use LiveAudioCapture for real-time transcription via raw PCM
-        mediaRecorder.start()
-        console.log('[Live/Tab Mode] MediaRecorder started without timeslice')
-        
-        const modelName = getPreferredModel()
-        
-        // Create LiveAudioCapture instance for real-time transcription
-        const liveCapture = new LiveAudioCapture({
-          sampleRate: 16000,
-          chunkDuration: 10, // Emit chunks every 10 seconds
-          onChunkReady: async (chunk: LiveAudioChunk) => {
-            console.log('[Live/Tab Mode] Chunk ready, samples:', chunk.samples.length, 'time:', chunk.startTime.toFixed(2), '-', chunk.endTime.toFixed(2))
-            
-            setIsRealtimeProcessing(true)
-            
-            try {
-              const result = await transcribePCM(chunk.samples, modelName, 'en')
-              
-              console.log('[Live/Tab Mode] Transcription complete:', result.text)
-              
-              if (result.text.trim()) {
-                const realtimeChunk: RealtimeTranscriptionChunk = {
-                  text: result.text,
-                  timestamp: chunk.startTime,
-                  segments: result.segments
-                }
-                
-                setRealtimeChunks(prev => [...prev, realtimeChunk])
-              }
-            } catch (error) {
-              console.error('[Live/Tab Mode] Transcription error:', error)
-            } finally {
-              setIsRealtimeProcessing(false)
-            }
-          }
-        })
-        
-        await liveCapture.start(combinedStream)
-        liveAudioCaptureRef.current = liveCapture
-        console.log('[Live/Tab Mode] LiveAudioCapture started')
-        
-      } else {
-        // REGULAR MODE: Start with timeslice to collect data regularly (for waveform data consistency)
-        mediaRecorder.start(1000)
-        console.log('[Record Mode] MediaRecorder started with 1s timeslice')
+      // Start MediaRecorder
+      mediaRecorder.start(1000) // Collect data every second
+      console.log('[Recording] MediaRecorder started')
+      
+      // Start speech recognition if enabled
+      if (liveTranscriptionEnabled) {
+        console.log('[Recording] Starting speech recognition...')
+        speechRecognition.start()
+        startNoSpeechTimer()
       }
       
       setIsRecording(true)
@@ -319,48 +354,19 @@ export default function RecordPage() {
       animationFrameRef.current = null
     }
     
-    // Clean up old real-time interval (if any from regular mode)
-    if (realtimeIntervalRef.current) {
-      clearInterval(realtimeIntervalRef.current)
-      realtimeIntervalRef.current = null
+    // Stop no-speech warning timer
+    if (noSpeechTimeoutRef.current) {
+      clearTimeout(noSpeechTimeoutRef.current)
+      noSpeechTimeoutRef.current = null
     }
     
-    // Handle LiveAudioCapture (for live mode)
-    if (liveAudioCaptureRef.current) {
-      console.log('[Stop] Flushing LiveAudioCapture for final chunk')
-      setIsProcessingFinal(true)
-      
-      const finalChunk = liveAudioCaptureRef.current.flush()
-      liveAudioCaptureRef.current.stop()
-      liveAudioCaptureRef.current = null
-      
-      // Transcribe the final chunk if it has audio
-      if (finalChunk && finalChunk.samples.length > 0) {
-        console.log('[Stop] Transcribing final chunk, samples:', finalChunk.samples.length)
-        
-        try {
-          const modelName = getPreferredModel()
-          const result = await transcribePCM(finalChunk.samples, modelName, 'en')
-          
-          console.log('[Stop] Final chunk transcription complete:', result.text)
-          
-          if (result.text.trim()) {
-            const realtimeChunk: RealtimeTranscriptionChunk = {
-              text: result.text,
-              timestamp: finalChunk.startTime,
-              segments: result.segments
-            }
-            setRealtimeChunks(prev => [...prev, realtimeChunk])
-          }
-        } catch (error) {
-          console.error('[Stop] Final chunk transcription error:', error)
-        }
-      }
-      
-      setIsProcessingFinal(false)
+    // Stop speech recognition
+    if (liveTranscriptionEnabled) {
+      console.log('[Recording] Stopping speech recognition...')
+      speechRecognition.stop()
     }
     
-    // Now stop the MediaRecorder (triggers ondataavailable with complete WebM)
+    // Now stop the MediaRecorder
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
     }
@@ -371,7 +377,7 @@ export default function RecordPage() {
       streamRef.current = null
     }
     
-    // Stop the display stream (for tab mode)
+    // Stop the display stream (for system audio)
     if (displayStreamRef.current) {
       displayStreamRef.current.getTracks().forEach(track => track.stop())
       displayStreamRef.current = null
@@ -379,7 +385,7 @@ export default function RecordPage() {
     
     setIsRecording(false)
     setIsPaused(false)
-    setIsRealtimeProcessing(false)
+    setNoSpeechWarning(false)
   }
 
   function togglePause() {
@@ -387,9 +393,15 @@ export default function RecordPage() {
 
     if (isPaused) {
       mediaRecorderRef.current.resume()
+      if (liveTranscriptionEnabled) {
+        speechRecognition.start()
+      }
       setIsPaused(false)
     } else {
       mediaRecorderRef.current.pause()
+      if (liveTranscriptionEnabled) {
+        speechRecognition.stop()
+      }
       setIsPaused(true)
     }
   }
@@ -449,12 +461,6 @@ export default function RecordPage() {
       bars.push(barAverage / 255) // Normalize to 0-1
     }
     
-    // Debug: log max value occasionally
-    const maxValue = Math.max(...bars)
-    if (Math.random() < 0.01) { // Log 1% of the time
-      console.log('Waveform max value:', maxValue.toFixed(3), 'bars sample:', bars.slice(0, 5).map(v => v.toFixed(2)))
-    }
-    
     setFrequencyData(bars)
     animationFrameRef.current = requestAnimationFrame(updateAudioLevel)
   }
@@ -489,11 +495,6 @@ export default function RecordPage() {
       return
     }
     
-    // Show warning if MIME type doesn't match but extension is valid
-    if (!isValidMimeType && isValidExtension) {
-      console.warn(`File has unexpected MIME type (${file.type}) but valid extension (.${fileExt}). Attempting to load...`)
-    }
-    
     // Validate file size (max 500MB)
     const MAX_SIZE = 500 * 1024 * 1024
     if (file.size > MAX_SIZE) {
@@ -526,11 +527,10 @@ export default function RecordPage() {
       const audio = new Audio()
       audio.preload = 'metadata'
       
-      // Add timeout to prevent hanging
       const timeout = setTimeout(() => {
         cleanup()
         reject(new Error('Timeout loading audio metadata. The file may be corrupted or in an unsupported format.'))
-      }, 10000) // 10 second timeout
+      }, 10000)
       
       const cleanup = () => {
         clearTimeout(timeout)
@@ -541,7 +541,6 @@ export default function RecordPage() {
       
       const onLoaded = () => {
         cleanup()
-        // Check if duration is valid
         if (!isFinite(audio.duration) || audio.duration <= 0) {
           reject(new Error('Could not determine audio duration. The file may be corrupted.'))
           return
@@ -552,8 +551,6 @@ export default function RecordPage() {
       const onError = (e: ErrorEvent | Event) => {
         cleanup()
         console.error('Audio loading error:', e)
-        
-        // Provide more specific error message
         const errorMsg = audio.error?.message || 'Unknown error loading audio'
         reject(new Error(`Failed to load audio file: ${errorMsg}. This may be due to an unsupported codec or corrupted file.`))
       }
@@ -561,7 +558,6 @@ export default function RecordPage() {
       audio.addEventListener('loadedmetadata', onLoaded)
       audio.addEventListener('error', onError)
       
-      // Create object URL and set as source
       try {
         audio.src = URL.createObjectURL(file)
       } catch (err) {
@@ -593,7 +589,6 @@ export default function RecordPage() {
       
       await addRecording(recording)
       
-      // Navigate to the recording detail page
       navigate(`/recordings/${recording.id}`)
     } catch (err) {
       console.error('Failed to save uploaded file:', err)
@@ -610,6 +605,11 @@ export default function RecordPage() {
       fileInputRef.current.value = ''
     }
   }
+  
+  function retrySystemAudio() {
+    setSystemAudioError(null)
+    startRecording()
+  }
 
   const showWarning = recordingTime >= ONE_HOUR && recordingTime < TWO_HOURS
 
@@ -619,17 +619,17 @@ export default function RecordPage() {
         <div className="text-center">
           <h1 className="text-2xl sm:text-3xl font-bold">Record or Upload Audio</h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Record audio, capture tab audio, or upload an existing file
+            Record audio or upload an existing file for transcription
           </p>
         </div>
         
-        {/* Mode Toggle */}
+        {/* Mode Toggle - Simplified to Record | Upload */}
         <div className="flex justify-center">
           <div className="inline-flex rounded-lg border border-input p-1 bg-muted w-full sm:w-auto">
             <button
               onClick={() => setMode('record')}
               disabled={isRecording}
-              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                 mode === 'record' 
                   ? 'bg-background text-foreground shadow-sm' 
                   : 'text-muted-foreground hover:text-foreground'
@@ -639,33 +639,9 @@ export default function RecordPage() {
               Record
             </button>
             <button
-              onClick={() => setMode('live')}
-              disabled={isRecording}
-              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                mode === 'live' 
-                  ? 'bg-background text-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <Loader2 size={16} />
-              Live
-            </button>
-            <button
-              onClick={() => setMode('tab')}
-              disabled={isRecording}
-              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                mode === 'tab' 
-                  ? 'bg-background text-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <Monitor size={16} />
-              Tab
-            </button>
-            <button
               onClick={() => setMode('upload')}
               disabled={isRecording}
-              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                 mode === 'upload' 
                   ? 'bg-background text-foreground shadow-sm' 
                   : 'text-muted-foreground hover:text-foreground'
@@ -686,34 +662,133 @@ export default function RecordPage() {
             </div>
           </Card>
         )}
-
-        {/* Processing final audio dialog */}
-        {isProcessingFinal && (
-          <Card className="p-4 sm:p-6 bg-primary/10 border-primary/20">
-            <div className="flex items-center justify-center gap-3">
-              <Loader2 size={24} className="animate-spin text-primary" />
-              <div className="text-center">
-                <p className="font-medium">Processing final audio...</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Transcribing the last segment before saving
-                </p>
+        
+        {/* System Audio Error with Retry */}
+        {systemAudioError && !isRecording && (
+          <Card className="p-3 sm:p-4 bg-destructive/10 border-destructive">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2 text-destructive">
+                <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+                <p className="text-xs sm:text-sm">{systemAudioError}</p>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={retrySystemAudio}
+                className="flex items-center gap-1"
+              >
+                <RefreshCw size={14} />
+                Retry
+              </Button>
             </div>
           </Card>
         )}
 
-        {(mode === 'record' || mode === 'live' || mode === 'tab') ? (
+        {mode === 'record' ? (
           // Recording UI
           <>
+            {/* Recording Options - Collapsed when recording */}
+            {!isRecording && (
+              <Card className="p-4 sm:p-6 space-y-4">
+                <h3 className="font-semibold text-sm sm:text-base">Recording Options</h3>
+                
+                {/* Live Transcription Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="live-transcription" className="text-sm sm:text-base cursor-pointer">
+                        Live Transcription
+                      </Label>
+                      {!speechRecognition.isSupported && (
+                        <span className="text-xs text-muted-foreground">(Not supported)</span>
+                      )}
+                    </div>
+                    <input
+                      id="live-transcription"
+                      type="checkbox"
+                      checked={liveTranscriptionEnabled}
+                      onChange={(e) => setLiveTranscriptionEnabled(e.target.checked)}
+                      disabled={!speechRecognition.isSupported}
+                      className="h-4 w-4 rounded border-input text-primary focus:ring-2 focus:ring-ring disabled:opacity-50"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    See transcription in real-time as you speak. Uses browser speech recognition (fast but less accurate).
+                  </p>
+                </div>
+                
+                {/* Language Selector (only shown when live transcription is enabled) */}
+                {liveTranscriptionEnabled && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Languages size={16} className="text-muted-foreground" />
+                      <Label htmlFor="language" className="text-sm">Language</Label>
+                    </div>
+                    <select
+                      id="language"
+                      value={selectedLanguage}
+                      onChange={(e) => setSelectedLanguage(e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                    >
+                      {LANGUAGE_OPTIONS.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
+                {/* System Audio Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Monitor size={16} className="text-muted-foreground" />
+                      <Label htmlFor="system-audio" className="text-sm sm:text-base cursor-pointer">
+                        Include System Audio
+                      </Label>
+                    </div>
+                    <input
+                      id="system-audio"
+                      type="checkbox"
+                      checked={systemAudioEnabled}
+                      onChange={(e) => setSystemAudioEnabled(e.target.checked)}
+                      className="h-4 w-4 rounded border-input text-primary focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Also record audio from a browser tab (Discord, Google Meet, etc.). You'll be asked to share a tab when recording starts.
+                  </p>
+                </div>
+              </Card>
+            )}
+            
+            {/* Active options summary when recording */}
+            {isRecording && (liveTranscriptionEnabled || systemAudioEnabled) && (
+              <div className="flex flex-wrap gap-2 justify-center text-xs">
+                {liveTranscriptionEnabled && (
+                  <span className="px-2 py-1 bg-primary/10 text-primary rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                    Live transcription
+                  </span>
+                )}
+                {systemAudioEnabled && (
+                  <span className="px-2 py-1 bg-primary/10 text-primary rounded-full flex items-center gap-1">
+                    <Monitor size={12} />
+                    System audio
+                  </span>
+                )}
+              </div>
+            )}
+
             <Card className="p-6 sm:p-8 md:p-12">
               <div className="flex flex-col items-center gap-6 sm:gap-8">
                 {/* Waveform visualization */}
                 <div className="w-full h-24 sm:h-32 bg-accent rounded-lg flex items-center justify-center">
                   <div className="flex items-end gap-0.5 sm:gap-1 h-16 sm:h-24">
                     {frequencyData.map((value, i) => {
-                      // Amplify the values and add minimum height
                       const height = isRecording && !isPaused 
-                        ? Math.max(10, Math.min(100, value * 200)) // Amplify by 2x, min 10%, max 100%
+                        ? Math.max(10, Math.min(100, value * 200))
                         : 10
                       
                       return (
@@ -797,49 +872,61 @@ export default function RecordPage() {
               </div>
             </Card>
             
-            {/* Real-time transcription display */}
-            {(mode === 'live' || mode === 'tab' || realtimeEnabled) && isRecording && (
+            {/* Live transcription display */}
+            {liveTranscriptionEnabled && isRecording && (
               <Card className="p-4 sm:p-6">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base sm:text-lg font-semibold">Real-time Transcription</h3>
-                    {isRealtimeProcessing && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Loader2 size={14} className="animate-spin" />
-                        Processing...
+                    <h3 className="text-base sm:text-lg font-semibold">Live Transcription</h3>
+                    {speechRecognition.isListening && (
+                      <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        Listening
                       </span>
                     )}
                   </div>
-                  {realtimeChunks.length === 0 ? (
+                  
+                  {/* No speech warning */}
+                  {noSpeechWarning && transcriptSegments.length === 0 && (
+                    <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-700 dark:text-yellow-400">
+                      <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm">
+                        <p className="font-medium">No speech detected</p>
+                        <p className="mt-1">Make sure you're speaking clearly into the microphone.</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Interim text (currently being spoken) */}
+                  {interimText && (
+                    <div className="p-2 sm:p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="text-xs sm:text-sm italic text-muted-foreground">
+                        {interimText}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Final transcript segments (newest first) */}
+                  {transcriptSegments.length === 0 && !interimText ? (
                     <div className="text-center py-8 text-muted-foreground text-sm">
-                      {recordingTime < 5 ? (
-                        <p>Waiting for at least 5 seconds of audio before first transcription...</p>
-                      ) : recordingTime < 15 ? (
-                        <p>First transcription starting soon...</p>
-                      ) : isRealtimeProcessing ? (
-                        <p>Processing first transcription (this may take 30-60 seconds)...</p>
-                      ) : (
-                        <>
-                          <p>No speech detected yet.</p>
-                          <p className="text-xs mt-2">Make sure you're speaking clearly into the microphone.</p>
-                        </>
-                      )}
-                      <p className="text-xs mt-2 text-muted-foreground/70">Transcription updates every 10 seconds</p>
+                      <p>Waiting for speech...</p>
+                      <p className="text-xs mt-2">Start speaking and your words will appear here.</p>
                     </div>
                   ) : (
                     <div className="max-h-48 sm:max-h-64 overflow-y-auto space-y-2 text-sm">
-                      {realtimeChunks.map((chunk, idx) => (
+                      {transcriptSegments.map((segment, idx) => (
                         <div key={idx} className="p-2 sm:p-3 bg-accent rounded-lg">
                           <div className="text-xs text-muted-foreground mb-1">
-                            {formatTime(Math.floor(chunk.timestamp))}
+                            {formatTime(Math.floor(segment.timestamp))}
                           </div>
-                          <div className="text-xs sm:text-sm">{chunk.text}</div>
+                          <div className="text-xs sm:text-sm">{segment.text}</div>
                         </div>
                       ))}
                     </div>
                   )}
+                  
                   <p className="text-xs text-muted-foreground">
-                    Note: Real-time transcription is approximate. A final, more accurate transcription will be available after stopping the recording.
+                    Live transcription uses your browser's speech recognition. A more accurate Whisper transcription will be available on the recording detail page.
                   </p>
                 </div>
               </Card>
@@ -915,7 +1002,7 @@ export default function RecordPage() {
           </Card>
         )}
 
-        {/* Form fields */}
+        {/* Form fields (Subject & Title) */}
         <Card className="p-4 sm:p-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
@@ -947,46 +1034,6 @@ export default function RecordPage() {
               className="text-sm sm:text-base"
             />
           </div>
-          
-          {mode === 'live' && (
-            <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-              <p className="text-xs sm:text-sm text-foreground">
-                <strong>Live Transcription Mode:</strong> Audio will be transcribed in real-time as you record. 
-                New transcription appears every 10 seconds. This mode uses more CPU and battery.
-              </p>
-            </div>
-          )}
-          
-          {mode === 'tab' && (
-            <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-              <p className="text-xs sm:text-sm text-foreground">
-                <strong>Tab Audio Mode:</strong> Records both your microphone AND audio from a browser tab (like Discord, Google Meet, etc.).
-                When you click record, you'll be asked to share a tab. <strong>Make sure to check "Share audio"</strong> in the share dialog.
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Note: This only works with browser tabs, not native desktop apps. For Discord, use Discord in your browser.
-              </p>
-            </div>
-          )}
-          
-          {mode === 'record' && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="realtime-transcription" className="text-sm sm:text-base">Real-time Transcription</Label>
-                <input
-                  id="realtime-transcription"
-                  type="checkbox"
-                  checked={realtimeEnabled}
-                  onChange={(e) => setRealtimeEnabled(e.target.checked)}
-                  disabled={isRecording}
-                  className="h-4 w-4 rounded border-input text-primary focus:ring-2 focus:ring-ring disabled:opacity-50"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Transcribe audio in real-time as you record (experimental). This uses more CPU and battery.
-              </p>
-            </div>
-          )}
 
           {subjects.length === 0 && (
             <p className="text-xs sm:text-sm text-muted-foreground">

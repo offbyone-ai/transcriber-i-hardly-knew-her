@@ -529,5 +529,56 @@ For detailed documentation, see:
 
 ---
 
-**Last Updated:** 2025-12-28  
-**Project Status:** Production-Ready - Docker & Coolify Deployment Complete
+## Phase 6: Live Transcription UI/UX Refactor
+**Status:** ✅ Completed: 2025-12-30
+
+### Summary
+Major refactor of the Record page to improve live transcription UX by replacing Whisper with Web Speech API for real-time transcription, while keeping Whisper for post-recording accurate transcription.
+
+### Changes Made
+
+**New Hook: `useSpeechRecognition`** (`client/src/hooks/use-speech-recognition.ts`)
+- Wraps browser's native Speech Recognition API
+- Auto-restarts on silence (Chrome workaround)
+- Supports multiple languages with language selector
+- Returns transcript segments (newest first), interim text, listening state
+- Graceful error handling for `no-speech` and browser compatibility
+
+**Record Page Refactor** (`client/src/pages/app/record.tsx`)
+- **Simplified UI:** Reduced from 4 tabs (Record/Live/Tab/Upload) to 2 tabs (Record/Upload)
+- **Toggle-based options:** Live transcription and system audio are now optional toggles instead of separate modes
+- **Language selector:** Choose speech recognition language (10 options, defaults to browser language)
+- **Improved transcript display:**
+  - Newest segments at top (no scrolling needed)
+  - Interim (non-final) text shown distinctly in italics
+  - Listening indicator with pulsing dot
+  - 30-second "no speech detected" warning
+- **System audio error handling:** Shows error with retry button if tab sharing is cancelled
+- **Removed Whisper dependencies:** No longer imports LiveAudioCapture, transcribePCM, getPreferredModel
+
+### Design Decisions
+
+1. **Web Speech API for live** - Fast, low CPU, less accurate (browser-native)
+2. **Whisper for post-recording** - Slow but highly accurate (on recording detail page)
+3. **Newest-first transcript** - User sees latest speech without scrolling
+4. **System audio as toggle** - Simpler UX, not a separate mode
+5. **Error + Retry pattern** - Clear guidance when tab sharing fails
+
+### Technical Details
+
+- Web Speech API available in Chrome, Edge, Safari (partial Firefox support)
+- Chrome limitation: stops after ~15-60s of silence, auto-restart implemented
+- Transcript segments stored as `{ text, timestamp, isFinal }[]`
+- Hook supports `continuous` and `interimResults` options
+
+### Files Modified/Created
+| File | Action | Lines |
+|------|--------|-------|
+| `client/src/hooks/use-speech-recognition.ts` | Created | 288 |
+| `client/src/pages/app/record.tsx` | Refactored | ~750 (down from 1000) |
+| `PROGRESS.md` | Updated | +60 |
+
+---
+
+**Last Updated:** 2025-12-30  
+**Project Status:** Production-Ready - Live Transcription UX Improved

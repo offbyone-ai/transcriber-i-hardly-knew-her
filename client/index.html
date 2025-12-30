@@ -5,6 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Transcriber</title>
+    <!-- Prevent flash of wrong theme -->
+    <script>
+      (function() {
+        const mode = localStorage.getItem('transcriber-theme-mode') || 'system';
+        const preset = localStorage.getItem('transcriber-theme-preset');
+        
+        let resolvedMode = mode;
+        if (mode === 'system') {
+          resolvedMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        
+        document.documentElement.classList.add(resolvedMode);
+        if (preset && preset !== 'default') {
+          document.documentElement.setAttribute('data-theme', preset);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
