@@ -6,6 +6,8 @@ import { db, addRecording } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card } from '@/components/ui/card'
 import { useSpeechRecognition, type TranscriptSegment } from '@/hooks/use-speech-recognition'
 import type { Subject, Recording } from '@shared/types'
@@ -727,13 +729,11 @@ export default function RecordPage() {
                         <span className="text-xs text-muted-foreground">(Not supported)</span>
                       )}
                     </div>
-                    <input
+                    <Checkbox
                       id="live-transcription"
-                      type="checkbox"
                       checked={liveTranscriptionEnabled}
-                      onChange={(e) => setLiveTranscriptionEnabled(e.target.checked)}
+                      onCheckedChange={(checked) => setLiveTranscriptionEnabled(checked as boolean)}
                       disabled={!speechRecognition.isSupported}
-                      className="h-4 w-4 rounded border-input text-primary focus:ring-2 focus:ring-ring disabled:opacity-50"
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -748,18 +748,17 @@ export default function RecordPage() {
                       <Languages size={16} className="text-muted-foreground" />
                       <Label htmlFor="language" className="text-sm">Language</Label>
                     </div>
-                    <select
+                    <Select
                       id="language"
                       value={selectedLanguage}
-                      onChange={(e) => setSelectedLanguage(e.target.value)}
-                      className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                      onValueChange={setSelectedLanguage}
                     >
                       {LANGUAGE_OPTIONS.map((lang) => (
                         <option key={lang.code} value={lang.code}>
                           {lang.label}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 )}
                 
@@ -772,12 +771,10 @@ export default function RecordPage() {
                         Include System Audio
                       </Label>
                     </div>
-                    <input
+                    <Checkbox
                       id="system-audio"
-                      type="checkbox"
                       checked={systemAudioEnabled}
-                      onChange={(e) => setSystemAudioEnabled(e.target.checked)}
-                      className="h-4 w-4 rounded border-input text-primary focus:ring-2 focus:ring-ring"
+                      onCheckedChange={setSystemAudioEnabled}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -1030,12 +1027,11 @@ export default function RecordPage() {
         <Card className="p-4 sm:p-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
-            <select
+            <Select
               id="subject"
               value={selectedSubjectId}
-              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              onValueChange={setSelectedSubjectId}
               disabled={isRecording || isProcessingUpload}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 text-sm sm:text-base"
             >
               <option value="">No subject (optional)</option>
               {subjects.map((subject) => (
@@ -1043,7 +1039,7 @@ export default function RecordPage() {
                   {subject.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           
           <div className="space-y-2">
