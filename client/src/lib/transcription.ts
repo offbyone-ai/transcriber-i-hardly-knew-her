@@ -224,6 +224,121 @@ export async function transcribeAudio(
   })
 }
 
+/**
+ * Transcribe raw PCM audio samples directly (for live transcription)
+ * This bypasses the audio decoding step since we already have raw samples.
+ */
+export async function transcribePCM(
+  audioData: Float32Array,
+  modelName: string,
+  language?: string,
+  onProgress?: (progress: TranscriptionProgress) => void
+): Promise<TranscriptionResult> {
+  const startTime = performance.now()
+  
+  console.log('[Transcription] Transcribing PCM audio, samples:', audioData.length)
+  
+  return new Promise((resolve, reject) => {
+    try {
+      onProgress?.({
+        status: 'loading',
+        progress: 20,
+        message: 'Loading Whisper model...',
+      })
+
+      const transcriptionWorker = getWorker()
+
+      let hasReceivedMessage = false
+      const workerTimeout = setTimeout(() => {
+        if (!hasReceivedMessage) {
+          console.error('[Transcription] Worker timeout - no response received')
+          transcriptionWorker.removeEventListener('message', handleMessage)
+          reject(new Error('Worker failed to respond'))
+        }
+      }, 30000) // 30 second timeout for longer audio
+
+      const handleMessage = (event: MessageEvent) => {
+        hasReceivedMessage = true
+        
+        const { status, file, progress, result, error } = event.data
+
+        switch (status) {
+          case 'progress':
+            const percent = progress || 0
+            onProgress?.({
+              status: 'loading',
+              progress: 20 + (percent * 0.3),
+              message: `Downloading ${file}... ${percent.toFixed(1)}%`,
+            })
+            break
+
+          case 'ready':
+            onProgress?.({
+              status: 'processing',
+              progress: 60,
+              message: 'Transcribing audio...',
+            })
+            break
+
+          case 'complete':
+            clearTimeout(workerTimeout)
+            transcriptionWorker.removeEventListener('message', handleMessage)
+            
+            const endTime = performance.now()
+            const processingTimeMs = Math.round(endTime - startTime)
+            
+            const text = result.text || ''
+            const segments: TranscriptionSegment[] = []
+            
+            if (result.chunks && Array.isArray(result.chunks)) {
+              for (const chunk of result.chunks) {
+                segments.push({
+                  start: chunk.timestamp[0] || 0,
+                  end: chunk.timestamp[1] || 0,
+                  text: chunk.text.trim(),
+                })
+              }
+            }
+
+            onProgress?.({
+              status: 'complete',
+              progress: 100,
+              message: 'Transcription complete!',
+            })
+
+            resolve({
+              text,
+              segments,
+              language: language || 'en',
+              processingTimeMs,
+            })
+            break
+
+          case 'error':
+            clearTimeout(workerTimeout)
+            transcriptionWorker.removeEventListener('message', handleMessage)
+            reject(new Error(error || 'Unknown worker error'))
+            break
+        }
+      }
+
+      transcriptionWorker.addEventListener('message', handleMessage)
+
+      console.log('[Transcription] Posting PCM audio to worker, samples:', audioData.length)
+      transcriptionWorker.postMessage({
+        type: 'transcribe',
+        audioData,
+        modelName,
+        language,
+      })
+
+    } catch (error) {
+      console.error('[Transcription] PCM transcription error:', error)
+      reject(error)
+    }
+  })
+}
+
 export async function isTranscriptionReady(_modelName: string): Promise<boolean> {
   // Models are downloaded on-demand, so always return true
   return true

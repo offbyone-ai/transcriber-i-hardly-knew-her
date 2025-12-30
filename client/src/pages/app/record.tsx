@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
-import { type RealtimeTranscriptionChunk, transcribeAudio } from '@/lib/transcription'
+import { type RealtimeTranscriptionChunk, transcribePCM } from '@/lib/transcription'
 import { getPreferredModel } from '@/lib/model-manager'
+import { LiveAudioCapture, type LiveAudioChunk } from '@/lib/live-audio-capture'
 import type { Subject, Recording } from '@shared/types'
 
 export default function RecordPage() {
@@ -33,8 +34,10 @@ export default function RecordPage() {
   const [realtimeEnabled, setRealtimeEnabled] = useState(false)
   const [realtimeChunks, setRealtimeChunks] = useState<RealtimeTranscriptionChunk[]>([])
   const [isRealtimeProcessing, setIsRealtimeProcessing] = useState(false)
+  const [isProcessingFinal, setIsProcessingFinal] = useState(false)
   const realtimeIntervalRef = useRef<number | null>(null)
   const recordingTimeRef = useRef<number>(0)
+  const liveAudioCaptureRef = useRef<LiveAudioCapture | null>(null)
   
   // Form state
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -158,74 +161,56 @@ export default function RecordPage() {
       }
       
       mediaRecorder.onstop = handleRecordingComplete
-      
-      // Start recording with timeslice to collect data regularly
-      mediaRecorder.start(1000)
       mediaRecorderRef.current = mediaRecorder
       
-      // Setup real-time transcription if enabled
+      // Start recording - different modes for live vs regular
       if (enableRealtime) {
-        const modelName = getPreferredModel()
-        const TRANSCRIPTION_INTERVAL = 10000 // 10 seconds
-        let lastTranscribedLength = 0
+        // LIVE MODE: Start MediaRecorder WITHOUT timeslice (produces valid WebM on stop)
+        // Use LiveAudioCapture for real-time transcription via raw PCM
+        mediaRecorder.start()
+        console.log('[Live Mode] MediaRecorder started without timeslice')
         
-        // Process audio every 10 seconds
-        realtimeIntervalRef.current = window.setInterval(async () => {
-          if (audioChunksRef.current.length === 0) {
-            console.log('[Real-time] No audio data yet, skipping')
-            return
-          }
-          
-          // Require at least 5 seconds of audio before first transcription
-          if (audioChunksRef.current.length < 5 && lastTranscribedLength === 0) {
-            console.log('[Real-time] Waiting for more audio data before first transcription...')
-            return
-          }
-          
-          // Create blob from ALL audio collected so far
-          // This is less efficient but produces valid WebM that can be decoded
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' })
-          console.log('[Real-time] Transcribing full recording, size:', audioBlob.size, 'bytes, chunks:', audioChunksRef.current.length)
-          
-          setIsRealtimeProcessing(true)
-          
-          try {
-            const result = await transcribeAudio({
-              audioBlob,
-              modelName,
-              language: 'en',
-            })
+        const modelName = getPreferredModel()
+        
+        // Create LiveAudioCapture instance for real-time transcription
+        const liveCapture = new LiveAudioCapture({
+          sampleRate: 16000,
+          chunkDuration: 10, // Emit chunks every 10 seconds
+          onChunkReady: async (chunk: LiveAudioChunk) => {
+            console.log('[Live Mode] Chunk ready, samples:', chunk.samples.length, 'time:', chunk.startTime.toFixed(2), '-', chunk.endTime.toFixed(2))
             
-            console.log('[Real-time] Transcription complete, text length:', result.text.length, 'full text:', result.text)
+            setIsRealtimeProcessing(true)
             
-            // If result is empty and we haven't transcribed anything yet, warn user
-            if (result.text.length === 0 && lastTranscribedLength === 0) {
-              console.warn('[Real-time] No speech detected yet. Make sure you are speaking clearly into the microphone.')
-            }
-            
-            // Only show NEW text (after what we've already shown)
-            const newText = result.text.substring(lastTranscribedLength)
-            
-            if (newText.trim()) {
-              lastTranscribedLength = result.text.length
+            try {
+              const result = await transcribePCM(chunk.samples, modelName, 'en')
               
-              const chunk: RealtimeTranscriptionChunk = {
-                text: newText,
-                timestamp: recordingTimeRef.current,
-                segments: result.segments
+              console.log('[Live Mode] Transcription complete:', result.text)
+              
+              if (result.text.trim()) {
+                const realtimeChunk: RealtimeTranscriptionChunk = {
+                  text: result.text,
+                  timestamp: chunk.startTime,
+                  segments: result.segments
+                }
+                
+                setRealtimeChunks(prev => [...prev, realtimeChunk])
               }
-              
-              console.log('[Real-time] Adding new chunk:', chunk)
-              setRealtimeChunks(prev => [...prev, chunk])
-            } else {
-              console.log('[Real-time] No new text to add')
+            } catch (error) {
+              console.error('[Live Mode] Transcription error:', error)
+            } finally {
+              setIsRealtimeProcessing(false)
             }
-          } catch (error) {
-            console.error('[Real-time] Transcription error:', error)
-          } finally {
-            setIsRealtimeProcessing(false)
           }
-        }, TRANSCRIPTION_INTERVAL)
+        })
+        
+        await liveCapture.start(stream)
+        liveAudioCaptureRef.current = liveCapture
+        console.log('[Live Mode] LiveAudioCapture started')
+        
+      } else {
+        // REGULAR MODE: Start with timeslice to collect data regularly (for waveform data consistency)
+        mediaRecorder.start(1000)
+        console.log('[Record Mode] MediaRecorder started with 1s timeslice')
       }
       
       setIsRecording(true)
@@ -253,30 +238,69 @@ export default function RecordPage() {
     }
   }
 
-  function stopRecording() {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-    }
-    
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
-    }
-    
+  async function stopRecording() {
+    // Stop the timer first
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
     }
     
+    // Stop animation frame
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current)
       animationFrameRef.current = null
     }
     
-    // Clean up real-time transcription
+    // Clean up old real-time interval (if any from regular mode)
     if (realtimeIntervalRef.current) {
       clearInterval(realtimeIntervalRef.current)
       realtimeIntervalRef.current = null
+    }
+    
+    // Handle LiveAudioCapture (for live mode)
+    if (liveAudioCaptureRef.current) {
+      console.log('[Stop] Flushing LiveAudioCapture for final chunk')
+      setIsProcessingFinal(true)
+      
+      const finalChunk = liveAudioCaptureRef.current.flush()
+      liveAudioCaptureRef.current.stop()
+      liveAudioCaptureRef.current = null
+      
+      // Transcribe the final chunk if it has audio
+      if (finalChunk && finalChunk.samples.length > 0) {
+        console.log('[Stop] Transcribing final chunk, samples:', finalChunk.samples.length)
+        
+        try {
+          const modelName = getPreferredModel()
+          const result = await transcribePCM(finalChunk.samples, modelName, 'en')
+          
+          console.log('[Stop] Final chunk transcription complete:', result.text)
+          
+          if (result.text.trim()) {
+            const realtimeChunk: RealtimeTranscriptionChunk = {
+              text: result.text,
+              timestamp: finalChunk.startTime,
+              segments: result.segments
+            }
+            setRealtimeChunks(prev => [...prev, realtimeChunk])
+          }
+        } catch (error) {
+          console.error('[Stop] Final chunk transcription error:', error)
+        }
+      }
+      
+      setIsProcessingFinal(false)
+    }
+    
+    // Now stop the MediaRecorder (triggers ondataavailable with complete WebM)
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
+    
+    // Stop the audio stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
     }
     
     setIsRecording(false)
@@ -573,6 +597,21 @@ export default function RecordPage() {
             <div className="flex items-start gap-2 text-destructive">
               <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
               <p className="text-xs sm:text-sm">{error}</p>
+            </div>
+          </Card>
+        )}
+
+        {/* Processing final audio dialog */}
+        {isProcessingFinal && (
+          <Card className="p-4 sm:p-6 bg-primary/10 border-primary/20">
+            <div className="flex items-center justify-center gap-3">
+              <Loader2 size={24} className="animate-spin text-primary" />
+              <div className="text-center">
+                <p className="font-medium">Processing final audio...</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Transcribing the last segment before saving
+                </p>
+              </div>
             </div>
           </Card>
         )}
