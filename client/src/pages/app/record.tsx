@@ -175,6 +175,12 @@ export default function RecordPage() {
             return
           }
           
+          // Require at least 5 seconds of audio before first transcription
+          if (audioChunksRef.current.length < 5 && lastTranscribedLength === 0) {
+            console.log('[Real-time] Waiting for more audio data before first transcription...')
+            return
+          }
+          
           // Create blob from ALL audio collected so far
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' })
           console.log('[Real-time] Transcribing full recording so far, size:', audioBlob.size, 'bytes, chunks:', audioChunksRef.current.length)
@@ -188,13 +194,19 @@ export default function RecordPage() {
               language: 'en',
             })
             
-            console.log('[Real-time] Transcription complete, text length:', result.text.length)
+            console.log('[Real-time] Transcription complete, text length:', result.text.length, 'full text:', result.text)
+            
+            // If result is empty and we haven't transcribed anything yet, warn user
+            if (result.text.length === 0 && lastTranscribedLength === 0) {
+              console.warn('[Real-time] No speech detected yet. Make sure you are speaking clearly into the microphone.')
+            }
             
             // Only show NEW text (after what we've already shown)
             const newText = result.text.substring(lastTranscribedLength)
-            lastTranscribedLength = result.text.length
             
             if (newText.trim()) {
+              lastTranscribedLength = result.text.length
+              
               const chunk: RealtimeTranscriptionChunk = {
                 text: newText,
                 timestamp: recordingTimeRef.current,
@@ -203,6 +215,8 @@ export default function RecordPage() {
               
               console.log('[Real-time] Adding new chunk:', chunk)
               setRealtimeChunks(prev => [...prev, chunk])
+            } else {
+              console.log('[Real-time] No new text to add (text is empty or already shown)')
             }
           } catch (error) {
             console.error('[Real-time] Transcription error:', error)
@@ -671,8 +685,19 @@ export default function RecordPage() {
                   </div>
                   {realtimeChunks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground text-sm">
-                      <p>Transcription will appear here after 10 seconds of recording...</p>
-                      <p className="text-xs mt-2">First chunk may take 30-60s to process</p>
+                      {recordingTime < 5 ? (
+                        <p>Waiting for at least 5 seconds of audio before first transcription...</p>
+                      ) : recordingTime < 15 ? (
+                        <p>First transcription starting soon...</p>
+                      ) : isRealtimeProcessing ? (
+                        <p>Processing first transcription (this may take 30-60 seconds)...</p>
+                      ) : (
+                        <>
+                          <p>No speech detected yet.</p>
+                          <p className="text-xs mt-2">Make sure you're speaking clearly into the microphone.</p>
+                        </>
+                      )}
+                      <p className="text-xs mt-2 text-muted-foreground/70">Transcription updates every 10 seconds</p>
                     </div>
                   ) : (
                     <div className="max-h-48 sm:max-h-64 overflow-y-auto space-y-2 text-sm">
