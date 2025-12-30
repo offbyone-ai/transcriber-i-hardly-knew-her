@@ -184,7 +184,7 @@ export default function RecordPage() {
         )
         realtimeTranscriberRef.current.start()
         
-        // Process chunks every 3 seconds
+        // Process chunks every 9 seconds (need 3 chunks of 3s each for reliable decoding)
         realtimeIntervalRef.current = window.setInterval(() => {
           if (realtimeTranscriberRef.current) {
             console.log('[Real-time] Starting to process chunk...')
@@ -198,7 +198,7 @@ export default function RecordPage() {
                 setIsRealtimeProcessing(false)
               })
           }
-        }, 3000) // Process every 3 seconds
+        }, 9000) // Process every 9 seconds
       }
       
       setIsRecording(true)
@@ -667,7 +667,7 @@ export default function RecordPage() {
                   </div>
                   {realtimeChunks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground text-sm">
-                      <p>Transcription will appear here after 3 seconds of recording...</p>
+                      <p>Transcription will appear here after 9 seconds of recording...</p>
                       <p className="text-xs mt-2">First chunk may take 30-60s to process</p>
                     </div>
                   ) : (
@@ -796,7 +796,7 @@ export default function RecordPage() {
             <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
               <p className="text-xs sm:text-sm text-foreground">
                 <strong>Live Transcription Mode:</strong> Audio will be transcribed in real-time as you record. 
-                Transcription appears every 3 seconds (processing takes 10-30s per chunk). 
+                Transcription appears every 9 seconds (processing takes 10-30s per chunk). 
                 This mode uses more CPU and battery.
               </p>
             </div>

@@ -284,6 +284,13 @@ export class RealtimeTranscriber {
       return
     }
     
+    // Require at least 3 chunks (9 seconds) before processing
+    // This ensures we have enough audio data for reliable decoding
+    if (this.audioChunks.length < 3) {
+      console.log('[RealtimeTranscriber] Skipping - need at least 3 chunks, have', this.audioChunks.length)
+      return
+    }
+    
     // Wait for any in-progress processing
     if (this.processingPromise) {
       console.log('[RealtimeTranscriber] Waiting for in-progress processing...')
