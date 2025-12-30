@@ -154,7 +154,9 @@ export default function RecordPage() {
         const modelName = getPreferredModel()
         const CHUNK_DURATION = 10000 // 10 seconds
         let hasTranscribedFirstChunk = false
-        let isStoppingForRestart = false
+        
+        // Use a ref to track restart state to avoid closure issues
+        const isRestartingRef = { current: false }
         
         // Handler for when MediaRecorder stops (every 10s for real-time)
         mediaRecorder.ondataavailable = (event) => {
@@ -164,9 +166,7 @@ export default function RecordPage() {
             audioChunksRef.current.push(event.data)
             
             // If this is a real-time chunk (not final stop), transcribe it
-            if (isStoppingForRestart) {
-              isStoppingForRestart = false
-              
+            if (isRestartingRef.current) {
               // Transcribe this chunk
               const chunkBlob = event.data
               console.log('[Real-time] Transcribing new chunk, size:', chunkBlob.size, 'bytes')
@@ -209,20 +209,26 @@ export default function RecordPage() {
                 .finally(() => {
                   setIsRealtimeProcessing(false)
                 })
-              
-              // Restart recording for next chunk
-              if (mediaRecorderRef.current && streamRef.current) {
-                console.log('[Real-time] Restarting MediaRecorder for next chunk')
-                mediaRecorderRef.current.start()
-              }
             }
           }
         }
         
-        // Final stop handler
+        // Stop handler - fires AFTER ondataavailable
         mediaRecorder.onstop = () => {
-          // Only call handleRecordingComplete if this is the final stop (not a restart)
-          if (!isStoppingForRestart) {
+          console.log('[Recording] MediaRecorder stopped, isRestarting:', isRestartingRef.current)
+          
+          // If this is a restart, start recording again
+          if (isRestartingRef.current) {
+            isRestartingRef.current = false
+            
+            // Restart recording for next chunk
+            if (mediaRecorderRef.current && streamRef.current) {
+              console.log('[Real-time] Restarting MediaRecorder for next chunk')
+              mediaRecorderRef.current.start()
+            }
+          } else {
+            // This is the final stop
+            console.log('[Recording] Final stop, completing recording')
             handleRecordingComplete()
           }
         }
@@ -235,7 +241,7 @@ export default function RecordPage() {
         realtimeIntervalRef.current = window.setInterval(() => {
           if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             console.log('[Real-time] Stopping MediaRecorder to get chunk')
-            isStoppingForRestart = true
+            isRestartingRef.current = true
             mediaRecorderRef.current.stop()
           }
         }, CHUNK_DURATION)
