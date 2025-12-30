@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mic, Square, Play, Pause, AlertCircle, Upload, Loader2 } from 'lucide-react'
+import { Mic, Square, Play, Pause, AlertCircle, Upload, Loader2, Monitor } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import { db, addRecording } from '@/lib/db'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ export default function RecordPage() {
   const { data: session } = useSession()
   
   // Tab state
-  const [mode, setMode] = useState<'record' | 'upload' | 'live'>('record')
+  const [mode, setMode] = useState<'record' | 'upload' | 'live' | 'tab'>('record')
   
   // Recording state
   const [isRecording, setIsRecording] = useState(false)
@@ -49,6 +49,7 @@ export default function RecordPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
+  const displayStreamRef = useRef<MediaStream | null>(null) // For tab audio capture
   const timerRef = useRef<number | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
@@ -119,23 +120,90 @@ export default function RecordPage() {
     setError(null)
     setRealtimeChunks([])
     
-    // Enable real-time transcription if in 'live' mode
-    const enableRealtime = mode === 'live' || realtimeEnabled
+    // Enable real-time transcription if in 'live' or 'tab' mode
+    const enableRealtime = mode === 'live' || mode === 'tab' || realtimeEnabled
     
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      let micStream: MediaStream | null = null
+      let displayStream: MediaStream | null = null
+      let combinedStream: MediaStream
+      
+      // Get microphone stream (for all modes)
+      micStream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           sampleRate: 44100,
         } 
       })
+      streamRef.current = micStream
       
-      streamRef.current = stream
+      // For tab mode, also get display media with audio
+      if (mode === 'tab') {
+        try {
+          console.log('[Tab Mode] Requesting display media with audio...')
+          displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true, // Required, but we'll ignore it
+            audio: {
+              // @ts-expect-error - suppressLocalAudioPlayback is a newer API
+              suppressLocalAudioPlayback: false,
+            }
+          })
+          displayStreamRef.current = displayStream
+          
+          // Check if we got audio tracks
+          const audioTracks = displayStream.getAudioTracks()
+          if (audioTracks.length === 0) {
+            console.warn('[Tab Mode] No audio track in display stream. User may not have enabled "Share audio"')
+            setError('No audio captured from tab. Make sure to check "Share audio" when sharing.')
+          } else {
+            console.log('[Tab Mode] Got display audio track:', audioTracks[0].label)
+          }
+          
+          // Stop video track - we only need audio
+          displayStream.getVideoTracks().forEach(track => {
+            console.log('[Tab Mode] Stopping video track:', track.label)
+            track.stop()
+          })
+          
+          // Mix mic and display audio streams using Web Audio API
+          const audioContext = new AudioContext({ sampleRate: 44100 })
+          const destination = audioContext.createMediaStreamDestination()
+          
+          // Add mic to mix
+          const micSource = audioContext.createMediaStreamSource(micStream)
+          micSource.connect(destination)
+          
+          // Add display audio to mix (if available)
+          if (audioTracks.length > 0) {
+            const displaySource = audioContext.createMediaStreamSource(displayStream)
+            displaySource.connect(destination)
+            console.log('[Tab Mode] Mixed mic + tab audio')
+          }
+          
+          combinedStream = destination.stream
+          
+        } catch (displayError) {
+          console.error('[Tab Mode] Failed to get display media:', displayError)
+          // Clean up mic stream
+          micStream.getTracks().forEach(track => track.stop())
+          streamRef.current = null
+          
+          if (displayError instanceof Error && displayError.name === 'NotAllowedError') {
+            setError('Screen sharing was cancelled. Please try again and select a tab to share.')
+          } else {
+            setError('Failed to capture tab audio. Please try again.')
+          }
+          return
+        }
+      } else {
+        // Regular modes - just use mic stream
+        combinedStream = micStream
+      }
 
-      // Setup audio analyzer for visualization
+      // Setup audio analyzer for visualization (use combined stream)
       const audioContext = new AudioContext()
-      const source = audioContext.createMediaStreamSource(stream)
+      const source = audioContext.createMediaStreamSource(combinedStream)
       const analyser = audioContext.createAnalyser()
       analyser.fftSize = 256
       analyser.smoothingTimeConstant = 0.8 // Smooth out the visualization
@@ -145,8 +213,8 @@ export default function RecordPage() {
       console.log('Audio analyzer setup complete, starting visualization')
       updateAudioLevel()
 
-      // Create MediaRecorder
-      const mediaRecorder = new MediaRecorder(stream, {
+      // Create MediaRecorder with the combined stream
+      const mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType: 'audio/webm;codecs=opus'
       })
       
@@ -165,10 +233,10 @@ export default function RecordPage() {
       
       // Start recording - different modes for live vs regular
       if (enableRealtime) {
-        // LIVE MODE: Start MediaRecorder WITHOUT timeslice (produces valid WebM on stop)
+        // LIVE/TAB MODE: Start MediaRecorder WITHOUT timeslice (produces valid WebM on stop)
         // Use LiveAudioCapture for real-time transcription via raw PCM
         mediaRecorder.start()
-        console.log('[Live Mode] MediaRecorder started without timeslice')
+        console.log('[Live/Tab Mode] MediaRecorder started without timeslice')
         
         const modelName = getPreferredModel()
         
@@ -177,14 +245,14 @@ export default function RecordPage() {
           sampleRate: 16000,
           chunkDuration: 10, // Emit chunks every 10 seconds
           onChunkReady: async (chunk: LiveAudioChunk) => {
-            console.log('[Live Mode] Chunk ready, samples:', chunk.samples.length, 'time:', chunk.startTime.toFixed(2), '-', chunk.endTime.toFixed(2))
+            console.log('[Live/Tab Mode] Chunk ready, samples:', chunk.samples.length, 'time:', chunk.startTime.toFixed(2), '-', chunk.endTime.toFixed(2))
             
             setIsRealtimeProcessing(true)
             
             try {
               const result = await transcribePCM(chunk.samples, modelName, 'en')
               
-              console.log('[Live Mode] Transcription complete:', result.text)
+              console.log('[Live/Tab Mode] Transcription complete:', result.text)
               
               if (result.text.trim()) {
                 const realtimeChunk: RealtimeTranscriptionChunk = {
@@ -196,16 +264,16 @@ export default function RecordPage() {
                 setRealtimeChunks(prev => [...prev, realtimeChunk])
               }
             } catch (error) {
-              console.error('[Live Mode] Transcription error:', error)
+              console.error('[Live/Tab Mode] Transcription error:', error)
             } finally {
               setIsRealtimeProcessing(false)
             }
           }
         })
         
-        await liveCapture.start(stream)
+        await liveCapture.start(combinedStream)
         liveAudioCaptureRef.current = liveCapture
-        console.log('[Live Mode] LiveAudioCapture started')
+        console.log('[Live/Tab Mode] LiveAudioCapture started')
         
       } else {
         // REGULAR MODE: Start with timeslice to collect data regularly (for waveform data consistency)
@@ -301,6 +369,12 @@ export default function RecordPage() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
+    }
+    
+    // Stop the display stream (for tab mode)
+    if (displayStreamRef.current) {
+      displayStreamRef.current.getTracks().forEach(track => track.stop())
+      displayStreamRef.current = null
     }
     
     setIsRecording(false)
@@ -545,7 +619,7 @@ export default function RecordPage() {
         <div className="text-center">
           <h1 className="text-2xl sm:text-3xl font-bold">Record or Upload Audio</h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Record audio, enable live transcription, or upload an existing file
+            Record audio, capture tab audio, or upload an existing file
           </p>
         </div>
         
@@ -575,6 +649,18 @@ export default function RecordPage() {
             >
               <Loader2 size={16} />
               Live
+            </button>
+            <button
+              onClick={() => setMode('tab')}
+              disabled={isRecording}
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                mode === 'tab' 
+                  ? 'bg-background text-foreground shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <Monitor size={16} />
+              Tab
             </button>
             <button
               onClick={() => setMode('upload')}
@@ -616,7 +702,7 @@ export default function RecordPage() {
           </Card>
         )}
 
-        {(mode === 'record' || mode === 'live') ? (
+        {(mode === 'record' || mode === 'live' || mode === 'tab') ? (
           // Recording UI
           <>
             <Card className="p-6 sm:p-8 md:p-12">
@@ -712,7 +798,7 @@ export default function RecordPage() {
             </Card>
             
             {/* Real-time transcription display */}
-            {(mode === 'live' || realtimeEnabled) && isRecording && (
+            {(mode === 'live' || mode === 'tab' || realtimeEnabled) && isRecording && (
               <Card className="p-4 sm:p-6">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -867,6 +953,18 @@ export default function RecordPage() {
               <p className="text-xs sm:text-sm text-foreground">
                 <strong>Live Transcription Mode:</strong> Audio will be transcribed in real-time as you record. 
                 New transcription appears every 10 seconds. This mode uses more CPU and battery.
+              </p>
+            </div>
+          )}
+          
+          {mode === 'tab' && (
+            <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+              <p className="text-xs sm:text-sm text-foreground">
+                <strong>Tab Audio Mode:</strong> Records both your microphone AND audio from a browser tab (like Discord, Google Meet, etc.).
+                When you click record, you'll be asked to share a tab. <strong>Make sure to check "Share audio"</strong> in the share dialog.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Note: This only works with browser tabs, not native desktop apps. For Discord, use Discord in your browser.
               </p>
             </div>
           )}
