@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mic, Square, Play, Pause, AlertCircle, Upload, Monitor, RefreshCw, Languages } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
-import { db, addRecording } from '@/lib/db'
+import { db, addRecording, addTranscription } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +10,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card } from '@/components/ui/card'
 import { useSpeechRecognition, type TranscriptSegment } from '@/hooks/use-speech-recognition'
-import type { Subject, Recording } from '@shared/types'
+import type { Subject, Recording, Transcription, TranscriptionSegment } from '@shared/types'
 
 // Common language options for speech recognition
 const LANGUAGE_OPTIONS = [
@@ -429,8 +429,10 @@ export default function RecordPage() {
       const actualDuration = recordingTimeRef.current
       console.log('[Record] Saving recording with duration:', actualDuration)
       
+      const recordingId = crypto.randomUUID()
+      
       const recording: Recording = {
-        id: crypto.randomUUID(),
+        id: recordingId,
         subjectId: selectedSubjectId === '__none__' ? undefined : selectedSubjectId,
         userId: session!.user!.id as string,
         title: title.trim() || undefined,
@@ -442,6 +444,46 @@ export default function RecordPage() {
       }
 
       await addRecording(recording)
+      
+      // Save live transcription if we have segments
+      if (transcriptSegments.length > 0) {
+        console.log('[Record] Saving live transcription with', transcriptSegments.length, 'segments')
+        
+        // Convert our TranscriptSegment format to TranscriptionSegment format
+        // Segments are stored newest-first, so reverse to get chronological order
+        const chronologicalSegments = [...transcriptSegments].reverse()
+        
+        const segments: TranscriptionSegment[] = chronologicalSegments.map((seg, index) => {
+          // Estimate end time: use next segment's start or add a few seconds
+          const nextSeg = chronologicalSegments[index + 1]
+          const estimatedDuration = nextSeg 
+            ? nextSeg.timestamp - seg.timestamp 
+            : Math.min(5, actualDuration - seg.timestamp) // Cap at 5 seconds or remaining time
+          
+          return {
+            start: seg.timestamp,
+            end: seg.timestamp + Math.max(estimatedDuration, 0.5), // At least 0.5s duration
+            text: seg.text,
+          }
+        })
+        
+        // Combine all segment text for the full transcription
+        const fullText = segments.map(s => s.text).join(' ')
+        
+        const transcription: Transcription = {
+          id: crypto.randomUUID(),
+          recordingId: recordingId,
+          userId: session!.user!.id as string,
+          text: fullText,
+          segments,
+          language: selectedLanguage,
+          modelUsed: 'web-speech-api', // Indicate this came from browser speech recognition
+          createdAt: new Date(),
+        }
+        
+        await addTranscription(transcription)
+        console.log('[Record] Live transcription saved')
+      }
       
       // Navigate to the recording detail page
       navigate(`/recordings/${recording.id}`)

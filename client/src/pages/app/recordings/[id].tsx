@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X } from 'lucide-react'
+import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X, AlertTriangle, Smartphone } from 'lucide-react'
 import { db, deleteRecording, addTranscription, updateRecordingSubject, updateRecordingTitle, fixRecordingDuration } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -9,6 +9,24 @@ import { useSession } from '@/lib/auth-client'
 import { getPreferredModel } from '@/lib/model-manager'
 import { transcribeAudio, type TranscriptionProgress } from '@/lib/transcription'
 import type { Recording, Transcription, Subject } from '@shared/types'
+
+// Detect if we're on a mobile device
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
+// Check available memory (returns estimated MB available, or null if not supported)
+function getAvailableMemoryMB(): number | null {
+  if (typeof navigator === 'undefined') return null
+  // @ts-expect-error - deviceMemory is not in all browsers
+  const deviceMemory = navigator.deviceMemory
+  if (deviceMemory) {
+    // deviceMemory gives total RAM in GB, rough estimate of available
+    return deviceMemory * 1024 * 0.3 // Assume 30% available
+  }
+  return null
+}
 
 export default function RecordingDetailPage() {
   const { id } = useParams()
@@ -30,6 +48,8 @@ export default function RecordingDetailPage() {
   const [isMoving, setIsMoving] = useState(false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editedTitle, setEditedTitle] = useState('')
+  const [showMobileWarning, setShowMobileWarning] = useState(false)
+  const [isMobile] = useState(() => isMobileDevice())
 
   useEffect(() => {
     loadRecordingData()
@@ -191,10 +211,29 @@ export default function RecordingDetailPage() {
     }
   }
 
-  async function handleTranscribe() {
+  async function handleTranscribe(bypassMobileWarning = false) {
     if (!recording || !session?.user?.id) return
 
+    // On mobile, show warning first (unless bypassed)
+    if (isMobile && !bypassMobileWarning && !showMobileWarning) {
+      setShowMobileWarning(true)
+      return
+    }
+    
+    // Reset warning state
+    setShowMobileWarning(false)
+
     const preferredModel = getPreferredModel()
+    
+    // Check available memory on mobile
+    const availableMemory = getAvailableMemoryMB()
+    if (isMobile && availableMemory !== null && availableMemory < 200) {
+      showAlert({
+        title: 'Low Memory Warning',
+        description: 'Your device may not have enough memory for AI transcription. Consider using live transcription during recording instead.'
+      })
+      return
+    }
     
     setIsTranscribing(true)
     setTranscriptionProgress(null)
@@ -241,10 +280,19 @@ export default function RecordingDetailPage() {
     } catch (error) {
       console.error('Transcription failed:', error)
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      showAlert({
-        title: 'Transcription Failed',
-        description: `${errorMsg}\n\nCheck the browser console for more details.`
-      })
+      
+      // Provide more helpful error message on mobile
+      if (isMobile) {
+        showAlert({
+          title: 'Transcription Failed',
+          description: `${errorMsg}\n\nMobile devices may have trouble with AI transcription due to memory limits. Try using live transcription during recording instead.`
+        })
+      } else {
+        showAlert({
+          title: 'Transcription Failed',
+          description: `${errorMsg}\n\nCheck the browser console for more details.`
+        })
+      }
     } finally {
       setIsTranscribing(false)
       setTranscriptionProgress(null)
@@ -445,7 +493,7 @@ export default function RecordingDetailPage() {
               <Button 
                 variant="default" 
                 size="sm"
-                onClick={handleTranscribe}
+                onClick={() => handleTranscribe()}
                 disabled={isTranscribing}
               >
                 {isTranscribing ? (
@@ -461,7 +509,7 @@ export default function RecordingDetailPage() {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={handleTranscribe}
+                onClick={() => handleTranscribe()}
                 disabled={isTranscribing}
               >
                 {isTranscribing ? (
@@ -478,6 +526,41 @@ export default function RecordingDetailPage() {
               </Button>
             )}
           </div>
+
+          {/* Mobile warning */}
+          {showMobileWarning && (
+            <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" size={20} />
+                <div className="flex-1">
+                  <h4 className="font-medium text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                    <Smartphone size={16} />
+                    Mobile Device Detected
+                  </h4>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                    AI transcription requires significant memory and may cause your browser to crash on mobile devices. 
+                    For best results, use the <strong>live transcription</strong> feature when recording instead.
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setShowMobileWarning(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant="default"
+                      onClick={() => handleTranscribe(true)}
+                    >
+                      Proceed Anyway
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Transcription progress */}
           {isTranscribing && transcriptionProgress && (
@@ -496,12 +579,17 @@ export default function RecordingDetailPage() {
           
           {transcription ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                 <span>Language: {transcription.language || 'auto'}</span>
-                <span>Model: {transcription.modelUsed}</span>
+                <span>Model: {transcription.modelUsed === 'web-speech-api' ? 'Live (Browser)' : transcription.modelUsed}</span>
                 <span>Created: {new Date(transcription.createdAt).toLocaleDateString()}</span>
                 {transcription.processingTimeMs && (
                   <span>Processing: {(transcription.processingTimeMs / 1000).toFixed(1)}s</span>
+                )}
+                {transcription.modelUsed === 'web-speech-api' && (
+                  <span className="text-yellow-600 dark:text-yellow-500">
+                    (Live transcription - re-transcribe with Whisper for higher accuracy)
+                  </span>
                 )}
               </div>
               

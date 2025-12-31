@@ -23,25 +23,40 @@ export type TranscriptionProgress = {
 
 // Web Worker instance (singleton)
 let worker: Worker | null = null
+let workerFailed = false
 
 function getWorker(): Worker {
+  if (workerFailed) {
+    throw new Error('Web Worker failed to initialize. Please refresh the page and try again.')
+  }
+  
   if (!worker) {
-    console.log('[Transcription] Creating Web Worker for transformers.js')
-    // Import worker directly - Vite will handle bundling
-    worker = new Worker(new URL('../workers/transcription.worker.js', import.meta.url), { 
-      type: 'module' 
-    })
-    console.log('[Transcription] Worker URL:', worker)
-    
-    // Add global error handler for worker
-    worker.onerror = (error) => {
-      console.error('[Transcription] Worker error event:', error)
-      console.error('[Transcription] Error message:', error.message)
-      console.error('[Transcription] Error filename:', error.filename)
-      console.error('[Transcription] Error lineno:', error.lineno)
+    try {
+      console.log('[Transcription] Creating Web Worker for transformers.js')
+      // Import worker directly - Vite will handle bundling
+      worker = new Worker(new URL('../workers/transcription.worker.js', import.meta.url), { 
+        type: 'module' 
+      })
+      console.log('[Transcription] Worker URL:', worker)
+      
+      // Add global error handler for worker
+      worker.onerror = (error) => {
+        console.error('[Transcription] Worker error event:', error)
+        console.error('[Transcription] Error message:', error.message)
+        console.error('[Transcription] Error filename:', error.filename)
+        console.error('[Transcription] Error lineno:', error.lineno)
+        
+        // Mark worker as failed to prevent retry loops
+        workerFailed = true
+        worker = null
+      }
+      
+      console.log('[Transcription] Web Worker created successfully')
+    } catch (error) {
+      console.error('[Transcription] Failed to create Web Worker:', error)
+      workerFailed = true
+      throw new Error('Failed to initialize transcription. Your browser may not support Web Workers or WASM.')
     }
-    
-    console.log('[Transcription] Web Worker created successfully')
   }
   return worker
 }
