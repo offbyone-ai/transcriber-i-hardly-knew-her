@@ -362,7 +362,7 @@ export default function RecordingDetailPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 pb-32">
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
           <Link 
@@ -395,13 +395,13 @@ export default function RecordingDetailPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 mb-2 group">
+                <div className="flex items-center gap-2 mb-2">
                   <h1 className="text-3xl font-bold">{recording.title || 'Untitled Recording'}</h1>
                   <Button 
                     variant="ghost" 
                     size="icon" 
                     onClick={handleStartEditTitle}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
                   >
                     <Pencil size={16} />
                   </Button>

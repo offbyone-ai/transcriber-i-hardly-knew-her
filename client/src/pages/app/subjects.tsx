@@ -96,7 +96,7 @@ export default function SubjectsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8">
+    <div className="p-4 sm:p-6 md:p-8 pb-32">
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>

@@ -9,7 +9,7 @@ describe("Routing", () => {
       expect(res.headers.get("content-type")).toContain("text/html")
       
       const html = await res.text()
-      expect(html).toContain("<title>Transcriber</title>")
+      expect(html).toContain("<title>Transcriber, I Hardly Knew Her</title>")
       expect(html).toContain("100% Local")
       expect(html).toContain("Your audio doesn't")
     })
@@ -40,7 +40,7 @@ describe("Routing", () => {
       expect(res.headers.get("content-type")).toContain("text/html")
       
       const html = await res.text()
-      expect(html).toContain("<title>Transcriber</title>")
+      expect(html).toContain("<title>Transcriber, I Hardly Knew Her</title>")
       expect(html).toContain('<div id="root"></div>')
     })
 
@@ -56,7 +56,7 @@ describe("Routing", () => {
       expect(res.headers.get("content-type")).toContain("text/html")
       
       const html = await res.text()
-      expect(html).toContain("<title>Transcriber</title>")
+      expect(html).toContain("<title>Transcriber, I Hardly Knew Her</title>")
     })
 
     test("GET /app/subjects should return React app HTML (SPA fallback)", async () => {

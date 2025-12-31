@@ -116,7 +116,7 @@ export default function SubjectDetailPage() {
             {recordings.map((recording) => (
               <Card key={recording.id} className="p-6">
                 <div className="flex items-start gap-4">
-                  <Mic size={24} className="text-primary flex-shrink-0 mt-1" />
+                  <Mic size={24} className="text-primary shrink-0 mt-1" />
                   
                   <div className="flex-1 min-w-0">
                     <Link to={`/recordings/${recording.id}`}>

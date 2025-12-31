@@ -3,6 +3,7 @@ import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useSession, signOut } from '@/lib/auth-client'
 import { Mic, Folder, LayoutDashboard, Settings, LogOut, Menu, X } from 'lucide-react'
 import { ThemeSwitcher } from '@/components/theme-switcher'
+import { AdBanner } from '@/components/ads/AdBanner'
 import { cn } from '@/lib/utils'
 
 export default function AppLayout() {
@@ -35,10 +36,10 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+    <div className="min-h-screen lg:h-screen bg-background flex flex-col lg:flex-row">
       {/* Mobile Header */}
       <header className="lg:hidden sticky top-0 z-40 w-full border-b border-border bg-card px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-bold">Transcriber</h1>
+        <h1 className="text-lg font-bold"></h1>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 hover:bg-accent rounded-lg transition"
@@ -51,12 +52,12 @@ export default function AppLayout() {
       {/* Sidebar - Desktop & Mobile */}
       <aside className={cn(
         "w-64 border-r border-border bg-card flex flex-col transition-transform duration-300 ease-in-out",
-        "lg:relative lg:translate-x-0",
-        "fixed inset-y-0 left-0 z-50",
+        "lg:relative lg:translate-x-0 lg:h-screen lg:sticky lg:top-0",
+        "fixed inset-y-0 left-0 z-50 h-screen",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-6 border-b border-border">
-          <h1 className="text-xl font-bold hidden lg:block">Transcriber</h1>
+        <div className="p-6 border-b border-border shrink-0">
+          <h1 className="text-xl font-bold hidden lg:block">  Transcriber, I Hardly Knew Her</h1>
           <p className="text-xs text-muted-foreground mt-1">
             {session.user?.name || session.user?.email}
           </p>
@@ -65,7 +66,7 @@ export default function AppLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto min-h-0">
           <NavLink to="/" icon={<LayoutDashboard size={20} />}>
             Dashboard
           </NavLink>
@@ -77,7 +78,7 @@ export default function AppLayout() {
           </NavLink>
         </nav>
 
-        <div className="p-4 border-t border-border space-y-1">
+        <div className="p-4 border-t border-border space-y-1 flex-shrink-0">
           <NavLink to="/settings" icon={<Settings size={20} />}>
             Settings
           </NavLink>
@@ -104,9 +105,16 @@ export default function AppLayout() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-y-auto pb-24">
         <Outlet />
       </main>
+
+      {/* Fixed Footer Ad Banner - positioned at bottom */}
+      <footer className="fixed bottom-0 right-0 left-0 lg:left-64 border-t border-border bg-background p-4 z-30">
+        <div className="max-w-full">
+          <AdBanner placement="transcription" />
+        </div>
+      </footer>
     </div>
   )
 }
