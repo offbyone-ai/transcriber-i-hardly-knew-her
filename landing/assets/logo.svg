@@ -1,0 +1,36 @@
+<svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Microphone with sound waves - matches landing page colors -->
+  <!-- Light mode: black on white with blue accent -->
+  <!-- Dark mode: white on dark with lighter blue accent -->
+  
+  <!-- Microphone capsule -->
+  <rect x="108" y="80" width="40" height="60" rx="20" fill="#3b82f6" stroke="#000" stroke-width="2"/>
+  
+  <!-- Microphone stem -->
+  <rect x="118" y="140" width="20" height="40" fill="#000" stroke="#000" stroke-width="1"/>
+  
+  <!-- Microphone base -->
+  <rect x="108" y="175" width="40" height="8" rx="4" fill="#000"/>
+  
+  <!-- Sound waves -->
+  <!-- Left wave 1 -->
+  <path d="M 70 128 Q 75 110 80 128 Q 75 146 70 128" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  
+  <!-- Left wave 2 -->
+  <path d="M 55 128 Q 62 100 72 128 Q 62 156 55 128" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+  
+  <!-- Right wave 1 -->
+  <path d="M 186 128 Q 181 110 176 128 Q 181 146 186 128" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  
+  <!-- Right wave 2 -->
+  <path d="M 201 128 Q 194 100 184 128 Q 194 156 201 128" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+  
+  <!-- Dark mode support -->
+  <style>
+    @media (prefers-color-scheme: dark) {
+      rect, path { stroke: #60a5fa; }
+      rect[fill="#000"] { fill: #f5f5f5; }
+      path { stroke: #60a5fa; }
+    }
+  </style>
+</svg>

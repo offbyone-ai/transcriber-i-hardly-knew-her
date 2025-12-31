@@ -52,7 +52,7 @@ export default function AppLayout() {
       {/* Sidebar - Desktop & Mobile */}
       <aside className={cn(
         "w-64 border-r border-border bg-card flex flex-col transition-transform duration-300 ease-in-out",
-        "lg:relative lg:translate-x-0 lg:h-screen lg:sticky lg:top-0",
+        "lg:relative lg:translate-x-0 lg:h-screen lg:top-0",
         "fixed inset-y-0 left-0 z-50 h-screen",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
@@ -78,7 +78,7 @@ export default function AppLayout() {
           </NavLink>
         </nav>
 
-        <div className="p-4 border-t border-border space-y-1 flex-shrink-0">
+        <div className="p-4 border-t border-border space-y-1 shrink-0">
           <NavLink to="/settings" icon={<Settings size={20} />}>
             Settings
           </NavLink>

@@ -79,6 +79,7 @@ body {
   border: 2px solid var(--black);
   padding: 8px 20px;
   transition: all 0.15s;
+  border-radius: 6px;
 }
 
 .sign-in:hover {
@@ -104,9 +105,11 @@ body {
   font-size: 14px;
   font-weight: 600;
   padding: 6px 14px;
-  border: 2px solid var(--black);
+  border: 2px solid var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  color: var(--accent);
+  border-radius: 8px;
 }
 
 .hero h1 {
@@ -137,17 +140,18 @@ body {
   font-size: 18px;
   font-weight: 600;
   padding: 16px 48px;
-  background: var(--black);
+  background: var(--accent);
   color: var(--white);
   text-decoration: none;
-  border: 2px solid var(--black);
+  border: 2px solid var(--accent);
   transition: all 0.15s;
   cursor: pointer;
+  border-radius: 8px;
 }
 
 .btn-primary:hover {
-  background: var(--white);
-  color: var(--black);
+  background: transparent;
+  color: var(--accent);
 }
 
 .btn-large {
@@ -220,7 +224,7 @@ h2 {
 .flow-number {
   font-size: 48px;
   font-weight: 900;
-  color: var(--gray-200);
+  color: var(--accent);
   margin-bottom: 16px;
   letter-spacing: -0.05em;
 }
@@ -239,6 +243,7 @@ h2 {
   border: 2px solid var(--black);
   padding: 32px;
   background: var(--gray-100);
+  border-radius: 8px;
 }
 
 .technical-note p {
@@ -391,14 +396,14 @@ h2 {
 }
 
 .final-cta .btn-primary {
-  background: var(--white);
-  color: var(--black);
-  border-color: var(--white);
+  background: var(--accent);
+  color: var(--white);
+  border-color: var(--accent);
 }
 
 .final-cta .btn-primary:hover {
   background: transparent;
-  color: var(--white);
+  color: var(--accent);
 }
 
 .footnote {
