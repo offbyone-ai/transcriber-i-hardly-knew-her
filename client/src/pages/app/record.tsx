@@ -58,6 +58,7 @@ export default function RecordPage() {
   
   // Transcript segments from Web Speech API (newest first)
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([])
+  const transcriptSegmentsRef = useRef<TranscriptSegment[]>([]) // Ref for accessing latest value in callbacks
   const [interimText, setInterimText] = useState('')
   
   // Track recording time for transcript timestamps
@@ -122,10 +123,9 @@ export default function RecordPage() {
           timestamp: recordingTimeRef.current,
           isFinal: true
         }
-        console.log('[Record] Adding transcript segment:', newSegment)
         setTranscriptSegments(prev => {
           const updated = [newSegment, ...prev]
-          console.log('[Record] Total segments now:', updated.length)
+          transcriptSegmentsRef.current = updated // Keep ref in sync
           return updated
         })
         setInterimText('')
@@ -204,6 +204,7 @@ export default function RecordPage() {
     setError(null)
     setSystemAudioError(null)
     setTranscriptSegments([])
+    transcriptSegmentsRef.current = [] // Reset ref too
     setInterimText('')
     setNoSpeechWarning(false)
     
@@ -299,8 +300,6 @@ export default function RecordPage() {
       analyser.smoothingTimeConstant = 0.8 // Smooth out the visualization
       source.connect(analyser)
       analyserRef.current = analyser
-      
-      console.log('Audio analyzer setup complete, starting visualization')
       updateAudioLevel()
 
       // Create MediaRecorder with the combined stream
@@ -313,7 +312,6 @@ export default function RecordPage() {
       // Collect audio chunks continuously
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          console.log('[Recording] Data available, size:', event.data.size, 'bytes')
           audioChunksRef.current.push(event.data)
         }
       }
@@ -323,11 +321,9 @@ export default function RecordPage() {
       
       // Start MediaRecorder
       mediaRecorder.start(1000) // Collect data every second
-      console.log('[Recording] MediaRecorder started')
       
       // Start speech recognition if enabled
       if (liveTranscriptionEnabled) {
-        console.log('[Recording] Starting speech recognition...')
         speechRecognition.start()
         startNoSpeechTimer()
       }
@@ -376,11 +372,10 @@ export default function RecordPage() {
       noSpeechTimeoutRef.current = null
     }
     
-    // Stop speech recognition
-    if (liveTranscriptionEnabled) {
-      console.log('[Recording] Stopping speech recognition...')
-      speechRecognition.stop()
-    }
+      // Stop speech recognition
+      if (liveTranscriptionEnabled) {
+        speechRecognition.stop()
+      }
     
     // Now stop the MediaRecorder
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -433,7 +428,6 @@ export default function RecordPage() {
       
       // Use ref value to get the actual recording time (state might be stale)
       const actualDuration = recordingTimeRef.current
-      console.log('[Record] Saving recording with duration:', actualDuration)
       
       const recordingId = crypto.randomUUID()
       
@@ -452,16 +446,13 @@ export default function RecordPage() {
       await addRecording(recording)
       
       // Save live transcription if we have segments
-      console.log('[Record] Checking for live transcription segments. Count:', transcriptSegments.length)
-      console.log('[Record] Segments data:', transcriptSegments)
+      // IMPORTANT: Use ref instead of state to avoid stale closure
+      const capturedSegments = transcriptSegmentsRef.current
       
-      if (transcriptSegments.length > 0) {
-        console.log('[Record] Saving live transcription with', transcriptSegments.length, 'segments')
-        
+      if (capturedSegments.length > 0) {
         // Convert our TranscriptSegment format to TranscriptionSegment format
         // Segments are stored newest-first, so reverse to get chronological order
-        const chronologicalSegments = [...transcriptSegments].reverse()
-        console.log('[Record] Chronological segments:', chronologicalSegments)
+        const chronologicalSegments = [...capturedSegments].reverse()
         
         const segments: TranscriptionSegment[] = chronologicalSegments.map((seg, index) => {
           // Estimate end time: use next segment's start or add a few seconds
@@ -491,9 +482,7 @@ export default function RecordPage() {
           createdAt: new Date(),
         }
         
-        console.log('[Record] About to save transcription:', transcription)
         await addTranscription(transcription)
-        console.log('[Record] Live transcription saved successfully')
       }
       
       // Navigate to the recording detail page

@@ -81,14 +81,11 @@ export default function RecordingDetailPage() {
       setAudioUrl(url)
       
       // Set initial duration from recording data
-      console.log('[Recording Detail] Recording duration from DB:', recordingData.duration)
       
       // If duration is 0 or missing, try to fix it
       if (!recordingData.duration || recordingData.duration === 0) {
-        console.log('[Recording Detail] Duration is 0, attempting to fix...')
         try {
           const fixedDuration = await fixRecordingDuration(recordingData.id)
-          console.log('[Recording Detail] Fixed duration:', fixedDuration)
           setDuration(fixedDuration)
           // Reload recording data to get updated duration
           const updatedRecording = await db.recordings.get(id)
@@ -105,12 +102,10 @@ export default function RecordingDetailPage() {
       }
 
       // Load transcription if exists
-      console.log('[Recording Detail] Loading transcription for recordingId:', id)
       const transcriptionData = await db.transcriptions
         .where('recordingId')
         .equals(id)
         .first()
-      console.log('[Recording Detail] Transcription data loaded:', transcriptionData)
       setTranscription(transcriptionData || null)
     } catch (error) {
       console.error('Failed to load recording:', error)
@@ -330,7 +325,6 @@ export default function RecordingDetailPage() {
   function handleLoadedMetadata() {
     if (audioRef.current && isFinite(audioRef.current.duration)) {
       // Update duration from actual audio metadata if available
-      console.log('[Recording Detail] Audio element duration:', audioRef.current.duration)
       setDuration(audioRef.current.duration)
     }
   }
