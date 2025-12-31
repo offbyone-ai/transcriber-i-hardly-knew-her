@@ -117,11 +117,17 @@ export default function RecordPage() {
       startNoSpeechTimer()
       
       if (isFinal && text.trim()) {
-        setTranscriptSegments(prev => [{
+        const newSegment = {
           text: text.trim(),
           timestamp: recordingTimeRef.current,
           isFinal: true
-        }, ...prev])
+        }
+        console.log('[Record] Adding transcript segment:', newSegment)
+        setTranscriptSegments(prev => {
+          const updated = [newSegment, ...prev]
+          console.log('[Record] Total segments now:', updated.length)
+          return updated
+        })
         setInterimText('')
       } else {
         setInterimText(text)
@@ -446,12 +452,16 @@ export default function RecordPage() {
       await addRecording(recording)
       
       // Save live transcription if we have segments
+      console.log('[Record] Checking for live transcription segments. Count:', transcriptSegments.length)
+      console.log('[Record] Segments data:', transcriptSegments)
+      
       if (transcriptSegments.length > 0) {
         console.log('[Record] Saving live transcription with', transcriptSegments.length, 'segments')
         
         // Convert our TranscriptSegment format to TranscriptionSegment format
         // Segments are stored newest-first, so reverse to get chronological order
         const chronologicalSegments = [...transcriptSegments].reverse()
+        console.log('[Record] Chronological segments:', chronologicalSegments)
         
         const segments: TranscriptionSegment[] = chronologicalSegments.map((seg, index) => {
           // Estimate end time: use next segment's start or add a few seconds
@@ -481,8 +491,9 @@ export default function RecordPage() {
           createdAt: new Date(),
         }
         
+        console.log('[Record] About to save transcription:', transcription)
         await addTranscription(transcription)
-        console.log('[Record] Live transcription saved')
+        console.log('[Record] Live transcription saved successfully')
       }
       
       // Navigate to the recording detail page

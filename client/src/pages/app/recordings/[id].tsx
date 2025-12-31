@@ -105,10 +105,12 @@ export default function RecordingDetailPage() {
       }
 
       // Load transcription if exists
+      console.log('[Recording Detail] Loading transcription for recordingId:', id)
       const transcriptionData = await db.transcriptions
         .where('recordingId')
         .equals(id)
         .first()
+      console.log('[Recording Detail] Transcription data loaded:', transcriptionData)
       setTranscription(transcriptionData || null)
     } catch (error) {
       console.error('Failed to load recording:', error)
