@@ -1,7 +1,7 @@
 # Multi-stage build for Transcriber app using Bun executable
 
-# Stage 1: Build whisper.cpp
-FROM debian:bookworm-slim AS whisper-build
+# Stage 1: Build whisper.cpp for Linux x64
+FROM --platform=linux/amd64 debian:bookworm-slim AS whisper-build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -14,8 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /whisper
 
 # Clone and build whisper.cpp
-RUN git clone --depth 1 https://github.com/ggerganov/whisper.cpp.git . && \
-    cmake -B build -DCMAKE_BUILD_TYPE=Release && \
+# Disable FP16 to avoid SIMD issues, use basic CPU backend
+RUN git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git . && \
+    cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_FP16=OFF -DGGML_NATIVE=OFF && \
     cmake --build build --config Release -j$(nproc) && \
     cp build/bin/whisper-cli /usr/local/bin/whisper
 
@@ -25,7 +26,7 @@ RUN mkdir -p /models && \
     "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin"
 
 # Stage 2: Build all packages and compile to standalone executable
-FROM oven/bun:1.3.4-slim AS build
+FROM --platform=linux/amd64 oven/bun:1.3.4-slim AS build
 WORKDIR /app
 
 # Copy package files for dependency installation
@@ -70,7 +71,7 @@ RUN bun run build:single
 RUN mkdir -p /app/data && chmod 777 /app/data
 
 # Stage 3: Minimal runtime image with glibc
-FROM chainguard/glibc-dynamic:latest
+FROM --platform=linux/amd64 chainguard/glibc-dynamic:latest
 
 WORKDIR /app
 
