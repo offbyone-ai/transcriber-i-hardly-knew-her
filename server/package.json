@@ -1,21 +1,19 @@
 {
   "name": "server",
   "version": "0.0.1",
-  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "bun build --compile --minify --sourcemap --outfile transcriber ./src/index.ts",
+    "build": "bun build --compile --minify --sourcemap --bytecode --outfile transcriber ./src/index.ts",
     "build:types": "tsc",
     "dev": "bun --watch run src/index.ts",
     "start": "./transcriber",
     "migrate": "bun run src/migrate.ts run",
     "migrate:status": "bun run src/migrate.ts status",
     "migrate:create": "bun run src/migrate.ts create",
-    "preload-model": "bun run -e \"import('./src/transcription').then(t => t.preloadModel('base.en'))\""
+    "check-whisper": "bun run -e \"import('./src/transcription').then(t => t.checkWhisperAvailability('base.en'))\""
   },
   "dependencies": {
-    "@huggingface/transformers": "^3.3.3",
     "better-auth": "^1.4.9",
     "hono": "^4.10.8",
     "shared": "workspace:*"

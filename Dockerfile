@@ -1,5 +1,30 @@
 # Multi-stage build for Transcriber app using Bun executable
-# Stage 1: Build all packages and compile to standalone executable
+
+# Stage 1: Build whisper.cpp
+FROM debian:bookworm-slim AS whisper-build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /whisper
+
+# Clone and build whisper.cpp
+RUN git clone --depth 1 https://github.com/ggerganov/whisper.cpp.git . && \
+    cmake -B build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build --config Release -j$(nproc) && \
+    cp build/bin/whisper-cli /usr/local/bin/whisper
+
+# Download the base.en model (141MB) - good balance of speed/accuracy
+RUN mkdir -p /models && \
+    curl -L -o /models/ggml-base.en.bin \
+    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin"
+
+# Stage 2: Build all packages and compile to standalone executable
 FROM oven/bun:1.3.4-slim AS build
 WORKDIR /app
 
@@ -42,12 +67,18 @@ ENV VITE_SERVER_URL=${VITE_SERVER_URL:-http://localhost:3000}
 RUN bun run build:single
 
 # Create data directory with proper permissions for runtime
-RUN mkdir -p /app/data /app/.cache && chmod 777 /app/data /app/.cache
+RUN mkdir -p /app/data && chmod 777 /app/data
 
-# Stage 2: Minimal runtime image with glibc
+# Stage 3: Minimal runtime image with glibc
 FROM chainguard/glibc-dynamic:latest
 
 WORKDIR /app
+
+# Copy whisper.cpp binary from whisper build stage
+COPY --from=whisper-build /usr/local/bin/whisper /usr/local/bin/whisper
+
+# Copy whisper model
+COPY --from=whisper-build /models/ /app/models/
 
 # Copy the compiled Bun executable from build stage
 COPY --from=build /app/server/transcriber transcriber

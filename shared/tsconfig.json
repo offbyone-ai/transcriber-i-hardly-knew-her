@@ -5,7 +5,6 @@
     "lib": ["ESNext"],
     "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "bundler",
 
     // Output configuration
     "declaration": true,

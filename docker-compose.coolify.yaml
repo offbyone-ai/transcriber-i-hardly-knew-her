@@ -17,11 +17,11 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL}
       DATABASE_PATH: /app/data/auth.db
-      HF_HOME: /app/.cache
-      TRANSFORMERS_CACHE: /app/.cache
+      # Whisper.cpp paths (models baked into image at /app/models)
+      WHISPER_BIN: /usr/local/bin/whisper
+      MODEL_DIR: /app/models
     volumes:
       - transcriber-data:/app/data
-      - transcriber-models:/app/.cache
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
@@ -66,8 +66,5 @@ services:
 volumes:
   transcriber-data:
     driver: local
-  transcriber-models:
-    driver: local
-    # Caches Whisper AI models (~75-250MB) to avoid re-downloading on container restart
   transcriber-backups:
     driver: local
