@@ -73,8 +73,14 @@ RUN bun run build:single
 # Create data directory with proper permissions for runtime
 RUN mkdir -p /app/data && chmod 777 /app/data
 
-# Stage 3: Minimal runtime image with glibc
-FROM --platform=linux/amd64 chainguard/glibc-dynamic:latest
+# Stage 3: Runtime image with required libraries
+FROM --platform=linux/amd64 debian:bookworm-slim AS runtime
+
+# Install runtime dependencies for whisper.cpp (OpenMP)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -101,14 +107,15 @@ COPY --from=build /app/server/static/ static/
 COPY --from=build /app/landing/ landing/
 
 # Copy data directory with proper permissions
-COPY --from=build --chown=nonroot:nonroot /app/data/ data/
+COPY --from=build /app/data/ data/
 
 # Set production environment
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Note: SQLite database directory (/app/data) will be created by volume mount
-# The nonroot user (UID 65532) already exists in chainguard/glibc-dynamic
+# Create non-root user for security
+RUN useradd -r -s /bin/false appuser && chown -R appuser:appuser /app
+USER appuser
 
 # Expose port
 EXPOSE 3000
