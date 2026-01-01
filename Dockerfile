@@ -45,13 +45,8 @@ RUN bun run build:single
 # Create data directory with proper permissions for runtime
 RUN mkdir -p /app/data && chmod 777 /app/data
 
-# Stage 2: Minimal runtime image
-FROM --platform=linux/amd64 debian:bookworm-slim AS runtime
-
-# Install minimal runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
+# Stage 2: Minimal runtime image with glibc
+FROM chainguard/glibc-dynamic:latest
 
 WORKDIR /app
 
@@ -68,34 +63,20 @@ COPY --from=build /app/server/static/ static/
 COPY --from=build /app/landing/ landing/
 
 # Copy data directory with proper permissions
-COPY --from=build /app/data/ data/
+COPY --from=build --chown=nonroot:nonroot /app/data/ data/
 
 # Set production environment
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Create non-root user for security
-RUN useradd -r -u 1000 -s /bin/false appuser && \
-    chown -R appuser:appuser /app
-
-# Create entrypoint script to fix volume permissions at runtime
-RUN printf '#!/bin/bash\n\
-# Fix permissions on mounted volumes\n\
-if [ -d /app/data ]; then\n\
-  chown -R appuser:appuser /app/data 2>/dev/null || true\n\
-fi\n\
-# Drop privileges and run command\n\
-exec setpriv --reuid=appuser --regid=appuser --init-groups "$@"\n' > /entrypoint.sh && \
-    chmod +x /entrypoint.sh
-
-ENTRYPOINT ["/entrypoint.sh"]
+# The nonroot user (UID 65532) already exists in chainguard/glibc-dynamic
 
 # Expose port
 EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+  CMD ["/usr/bin/wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
 
 # Run the standalone executable
 CMD ["./transcriber"]

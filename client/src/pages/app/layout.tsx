@@ -36,7 +36,7 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen lg:h-screen bg-background flex flex-col lg:flex-row">
+    <div className="min-h-svh lg:h-svh bg-background flex flex-col lg:flex-row">
       {/* Mobile Header */}
       <header className="lg:hidden sticky top-0 z-40 w-full border-b border-border bg-card px-4 py-3 flex items-center justify-between">
         <button
@@ -52,8 +52,8 @@ export default function AppLayout() {
       {/* Sidebar - Desktop & Mobile */}
       <aside className={cn(
         "w-64 border-r border-border bg-card flex flex-col transition-transform duration-300 ease-in-out",
-        "lg:relative lg:translate-x-0 lg:h-screen lg:top-0",
-        "fixed inset-y-0 left-0 z-50 h-screen",
+        "lg:relative lg:translate-x-0 lg:h-svh lg:top-0",
+        "fixed inset-y-0 left-0 z-50 h-svh",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-6 border-b border-border shrink-0">
