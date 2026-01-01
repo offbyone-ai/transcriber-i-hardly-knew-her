@@ -114,8 +114,20 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 # Create non-root user for security
-RUN useradd -r -s /bin/false appuser && chown -R appuser:appuser /app
-USER appuser
+RUN useradd -r -u 1000 -s /bin/false appuser && \
+    chown -R appuser:appuser /app
+
+# Create entrypoint script to fix volume permissions at runtime
+RUN printf '#!/bin/bash\n\
+# Fix permissions on mounted volumes\n\
+if [ -d /app/data ]; then\n\
+  chown -R appuser:appuser /app/data 2>/dev/null || true\n\
+fi\n\
+# Drop privileges and run command\n\
+exec setpriv --reuid=appuser --regid=appuser --init-groups "$@"\n' > /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Expose port
 EXPOSE 3000
