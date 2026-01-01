@@ -1,35 +1,7 @@
 # Multi-stage build for Transcriber app using Bun executable
 
-# Stage 1: Build whisper.cpp for Linux x64
-FROM --platform=linux/amd64 debian:bookworm-slim AS whisper-build
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    cmake \
-    git \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /whisper
-
-# Clone and build whisper.cpp
-# Disable FP16 to avoid SIMD issues, use basic CPU backend
-RUN git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git . && \
-    cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_FP16=OFF -DGGML_NATIVE=OFF && \
-    cmake --build build --config Release -j$(nproc) && \
-    cp build/bin/whisper-cli /usr/local/bin/whisper && \
-    mkdir -p /usr/local/lib/whisper && \
-    cp build/src/libwhisper.so* /usr/local/lib/whisper/ && \
-    cp build/ggml/src/libggml*.so* /usr/local/lib/whisper/
-
-# Download the base.en model (141MB) - good balance of speed/accuracy
-RUN mkdir -p /models && \
-    curl -L -o /models/ggml-base.en.bin \
-    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin"
-
-# Stage 2: Build all packages and compile to standalone executable
-FROM --platform=linux/amd64 oven/bun:1.3.4-slim AS build
+# Stage 1: Build all packages and compile to standalone executable
+FROM --platform=linux/amd64 oven/bun:1-slim AS build
 WORKDIR /app
 
 # Copy package files for dependency installation
@@ -73,26 +45,15 @@ RUN bun run build:single
 # Create data directory with proper permissions for runtime
 RUN mkdir -p /app/data && chmod 777 /app/data
 
-# Stage 3: Runtime image with required libraries
+# Stage 2: Minimal runtime image
 FROM --platform=linux/amd64 debian:bookworm-slim AS runtime
 
-# Install runtime dependencies for whisper.cpp (OpenMP)
+# Install minimal runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgomp1 \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
-# Copy whisper.cpp binary from whisper build stage
-COPY --from=whisper-build /usr/local/bin/whisper /usr/local/bin/whisper
-
-# Copy whisper.cpp shared libraries
-COPY --from=whisper-build /usr/local/lib/whisper/ /usr/local/lib/whisper/
-ENV LD_LIBRARY_PATH=/usr/local/lib/whisper:$LD_LIBRARY_PATH
-
-# Copy whisper model
-COPY --from=whisper-build /models/ /app/models/
 
 # Copy the compiled Bun executable from build stage
 COPY --from=build /app/server/transcriber transcriber
@@ -134,7 +95,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD ["/usr/bin/wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+  CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
 
 # Run the standalone executable
 CMD ["./transcriber"]

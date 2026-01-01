@@ -15,9 +15,6 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-secret-change-me-min-32-chars-long}
       BETTER_AUTH_URL: http://localhost:3000
       DATABASE_PATH: /app/data/auth.db
-      # Whisper.cpp paths (models baked into image at /app/models)
-      WHISPER_BIN: /usr/local/bin/whisper
-      MODEL_DIR: /app/models
     volumes:
       - transcriber-data-dev:/app/data
     restart: unless-stopped
