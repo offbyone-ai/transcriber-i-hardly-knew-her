@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/bun'
 import type { ApiResponse } from 'shared/dist'
 import { auth } from './auth'
+import { transcriptionRoutes } from './transcription-routes'
 
 const app = new Hono()
 
@@ -66,6 +67,9 @@ app.use('/api/*', cors({
 app.on(['POST', 'GET'], '/api/auth/*', (c) => {
   return auth.handler(c.req.raw)
 })
+
+// Mount server-side transcription routes
+app.route('/api/transcription', transcriptionRoutes)
 
 // API routes
 app.get('/api', (c) => {

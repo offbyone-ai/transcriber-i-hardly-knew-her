@@ -68,8 +68,8 @@ export default function SubjectDetailPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 md:p-8 pb-32">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
         <div>
           <Link 
             to="/subjects" 
@@ -79,17 +79,17 @@ export default function SubjectDetailPage() {
             Back to subjects
           </Link>
           
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">{subject.name}</h1>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold break-words">{subject.name}</h1>
               {subject.description && (
-                <p className="text-muted-foreground mt-2">
+                <p className="text-muted-foreground mt-2 text-sm sm:text-base">
                   {subject.description}
                 </p>
               )}
             </div>
-            <Link to="/record">
-              <Button>
+            <Link to="/record" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">
                 <Plus size={20} />
                 New Recording
               </Button>
@@ -98,34 +98,35 @@ export default function SubjectDetailPage() {
         </div>
 
         {recordings.length === 0 ? (
-          <Card className="p-12 text-center">
-            <Mic size={48} className="mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">No recordings yet</h2>
-            <p className="text-muted-foreground text-sm mb-6">
+          <Card className="p-8 sm:p-12 text-center">
+            <Mic size={40} className="sm:hidden mx-auto text-muted-foreground mb-4" />
+            <Mic size={48} className="hidden sm:block mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-lg sm:text-xl font-semibold mb-2">No recordings yet</h2>
+            <p className="text-muted-foreground text-xs sm:text-sm mb-6">
               Record audio for this subject to get started with transcription
             </p>
             <Link to="/record">
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Mic size={20} />
                 Start Recording
               </Button>
             </Link>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4">
             {recordings.map((recording) => (
-              <Card key={recording.id} className="p-6">
-                <div className="flex items-start gap-4">
-                  <Mic size={24} className="text-primary shrink-0 mt-1" />
+              <Card key={recording.id} className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <Mic size={24} className="text-primary shrink-0 hidden sm:block mt-1" />
                   
                   <div className="flex-1 min-w-0">
                     <Link to={`/recordings/${recording.id}`}>
-                      <h3 className="font-semibold text-lg hover:text-primary transition">
+                      <h3 className="font-semibold text-base sm:text-lg hover:text-primary transition break-words">
                         {recording.title || 'Untitled Recording'}
                       </h3>
                     </Link>
                     
-                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-xs sm:text-sm text-muted-foreground">
                       <span>
                         {Math.floor(recording.duration / 60)}:{String(Math.floor(recording.duration % 60)).padStart(2, '0')}
                       </span>
@@ -141,9 +142,9 @@ export default function SubjectDetailPage() {
                     <TranscriptionStatus recordingId={recording.id} />
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Link to={`/recordings/${recording.id}`}>
-                      <Button variant="outline" size="sm">
+                  <div className="flex items-center gap-2 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-border">
+                    <Link to={`/recordings/${recording.id}`} className="flex-1 sm:flex-none">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         View
                       </Button>
                     </Link>

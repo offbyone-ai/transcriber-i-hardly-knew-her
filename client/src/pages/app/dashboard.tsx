@@ -68,16 +68,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-8 pb-32">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 md:p-8 pb-32">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Your transcription overview
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           <StatCard
             label="Total Subjects"
             value={stats.subjects.toString()}
@@ -100,9 +100,9 @@ export default function DashboardPage() {
 
         {/* Recent Subjects */}
         {recentSubjects.length > 0 && (
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Recent Subjects</h2>
+              <h2 className="text-lg sm:text-xl font-semibold">Recent Subjects</h2>
               <Link to="/subjects">
                 <Button variant="ghost" size="sm">View All</Button>
               </Link>
@@ -114,17 +114,17 @@ export default function DashboardPage() {
                   to={`/subjects/${subject.id}`}
                   className="block p-3 rounded-lg hover:bg-accent transition"
                 >
-                  <div className="flex items-center gap-3">
-                    <Folder size={20} className="text-primary" />
-                    <div className="flex-1">
-                      <div className="font-medium">{subject.name}</div>
+                  <div className="flex items-start gap-3">
+                    <Folder size={20} className="text-primary shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{subject.name}</div>
                       {subject.description && (
-                        <div className="text-sm text-muted-foreground truncate">
+                        <div className="text-xs sm:text-sm text-muted-foreground truncate">
                           {subject.description}
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground shrink-0">
                       {new Date(subject.createdAt).toLocaleDateString()}
                     </div>
                   </div>
@@ -136,9 +136,9 @@ export default function DashboardPage() {
 
         {/* Recent Recordings */}
         {recentRecordings.length > 0 && (
-          <Card className="p-6">
+          <Card className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Recent Recordings</h2>
+              <h2 className="text-lg sm:text-xl font-semibold">Recent Recordings</h2>
             </div>
             <div className="space-y-2">
               {recentRecordings.map((recording) => (
@@ -147,15 +147,15 @@ export default function DashboardPage() {
                   to={`/recordings/${recording.id}`}
                   className="block p-3 rounded-lg hover:bg-accent transition"
                 >
-                  <div className="flex items-center gap-3">
-                    <Mic size={20} className="text-primary" />
-                    <div className="flex-1">
-                      <div className="font-medium">{recording.title || 'Untitled Recording'}</div>
-                      <div className="text-sm text-muted-foreground">
+                  <div className="flex items-start gap-3">
+                    <Mic size={20} className="text-primary shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{recording.title || 'Untitled Recording'}</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">
                         {Math.floor(recording.duration / 60)}:{String(Math.floor(recording.duration % 60)).padStart(2, '0')} • {(recording.fileSize / 1024 / 1024).toFixed(2)} MB
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground shrink-0">
                       {new Date(recording.createdAt).toLocaleDateString()}
                     </div>
                   </div>
@@ -167,20 +167,20 @@ export default function DashboardPage() {
 
         {/* Empty state */}
         {stats.subjects === 0 && stats.recordings === 0 && (
-          <Card className="p-12 text-center">
-            <h2 className="text-xl font-semibold mb-2">Get Started</h2>
-            <p className="text-muted-foreground text-sm mb-6">
+          <Card className="p-8 sm:p-12 text-center">
+            <h2 className="text-lg sm:text-xl font-semibold mb-2">Get Started</h2>
+            <p className="text-muted-foreground text-xs sm:text-sm mb-6">
               Create your first subject or start recording to begin transcribing
             </p>
-            <div className="flex gap-4 justify-center">
-              <Link to="/subjects">
-                <Button>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+              <Link to="/subjects" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">
                   <Folder size={20} />
                   Create Subject
                 </Button>
               </Link>
-              <Link to="/record">
-                <Button variant="outline">
+              <Link to="/record" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Mic size={20} />
                   Start Recording
                 </Button>
@@ -205,14 +205,14 @@ function StatCard({
   icon: React.ReactNode
 }) {
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <div className="flex items-start justify-between">
-        <div>
-          <div className="text-sm text-muted-foreground">{label}</div>
-          <div className="text-3xl font-bold mt-2">{value}</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs sm:text-sm text-muted-foreground">{label}</div>
+          <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">{value}</div>
           <div className="text-xs text-muted-foreground mt-1">{description}</div>
         </div>
-        <div className="text-muted-foreground">{icon}</div>
+        <div className="text-muted-foreground shrink-0 ml-2">{icon}</div>
       </div>
     </Card>
   )

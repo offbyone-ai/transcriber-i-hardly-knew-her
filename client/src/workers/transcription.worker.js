@@ -69,8 +69,32 @@ class WhisperPipeline {
         env.allowRemoteModels = true
         env.useBrowserCache = true
         
-        // Let transformers.js use its default WASM paths (auto-configured)
-        // Don't override the backends - let it figure out the right version
+        // Try to use WebGPU if available for better performance
+        // This is especially helpful on mobile devices and modern GPUs
+        if (typeof navigator !== 'undefined' && navigator.gpu) {
+          console.log('[Worker] WebGPU is available! Attempting to use it...')
+          try {
+            const adapter = await navigator.gpu.requestAdapter()
+            if (adapter) {
+              console.log('[Worker] WebGPU adapter found, enabling WebGPU backend')
+              env.backends = {
+                onnx: {
+                  wasm: { 
+                    numThreads: 4 
+                  },
+                  // Prefer WebGPU when available
+                  webgpu: {}
+                }
+              }
+            } else {
+              console.log('[Worker] WebGPU adapter not found, falling back to WASM')
+            }
+          } catch (gpuError) {
+            console.log('[Worker] WebGPU check failed, using WASM:', gpuError)
+          }
+        } else {
+          console.log('[Worker] WebGPU not available, using WASM backend')
+        }
         
         console.log('[Worker] Environment configured:', {
           allowRemoteModels: env.allowRemoteModels,

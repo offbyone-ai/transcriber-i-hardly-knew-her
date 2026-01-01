@@ -59,6 +59,7 @@
       "name": "server",
       "version": "0.0.1",
       "dependencies": {
+        "@huggingface/transformers": "^3.3.3",
         "better-auth": "^1.4.9",
         "hono": "^4.10.8",
         "shared": "workspace:*",

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X, AlertTriangle, Smartphone } from 'lucide-react'
+import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X, AlertTriangle, Smartphone, Cloud, HardDrive, Zap, Cpu, ChevronDown, ChevronUp } from 'lucide-react'
 import { db, deleteRecording, addTranscription, updateRecordingSubject, updateRecordingTitle, fixRecordingDuration } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -8,13 +8,9 @@ import { useAlert } from '@/components/alert-provider'
 import { useSession } from '@/lib/auth-client'
 import { getPreferredModel } from '@/lib/model-manager'
 import { transcribeAudio, type TranscriptionProgress } from '@/lib/transcription'
+import { transcribeOnServer, getServerTranscriptionStatus, type UsageInfo } from '@/lib/server-transcription'
+import { isMobileDevice, canUseLocalTranscription, getWebGPUInfo, type TranscriptionMode } from '@/lib/device-detection'
 import type { Recording, Transcription, Subject } from '@shared/types'
-
-// Detect if we're on a mobile device
-function isMobileDevice(): boolean {
-  if (typeof navigator === 'undefined') return false
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-}
 
 // Check available memory (returns estimated MB available, or null if not supported)
 function getAvailableMemoryMB(): number | null {
@@ -50,10 +46,22 @@ export default function RecordingDetailPage() {
   const [editedTitle, setEditedTitle] = useState('')
   const [showMobileWarning, setShowMobileWarning] = useState(false)
   const [isMobile] = useState(() => isMobileDevice())
+  
+  // Transcription mode state
+  const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>(() => {
+    // Default to server on mobile, local on desktop
+    return isMobileDevice() ? 'server' : 'local'
+  })
+  const [serverUsage, setServerUsage] = useState<UsageInfo | null>(null)
+  const [serverAvailable, setServerAvailable] = useState(false)
+  const [webGPUInfo, setWebGPUInfo] = useState<{ available: boolean; adapterName?: string } | null>(null)
+  const [showModeOptions, setShowModeOptions] = useState(false)
+  const canUseLocal = canUseLocalTranscription()
 
   useEffect(() => {
     loadRecordingData()
     loadSubjects()
+    checkServerStatus()
     
     return () => {
       // Cleanup audio URL
@@ -62,6 +70,19 @@ export default function RecordingDetailPage() {
       }
     }
   }, [id])
+  
+  async function checkServerStatus() {
+    // Fetch server status and WebGPU info in parallel
+    const [status, gpuInfo] = await Promise.all([
+      getServerTranscriptionStatus(),
+      getWebGPUInfo()
+    ])
+    if (status) {
+      setServerAvailable(status.ready)
+      setServerUsage(status.usage)
+    }
+    setWebGPUInfo(gpuInfo)
+  }
 
   async function loadRecordingData() {
     if (!id) return
@@ -211,26 +232,14 @@ export default function RecordingDetailPage() {
   async function handleTranscribe(bypassMobileWarning = false) {
     if (!recording || !session?.user?.id) return
 
-    // On mobile, show warning first (unless bypassed)
-    if (isMobile && !bypassMobileWarning && !showMobileWarning) {
+    // On mobile with local mode, show warning first (unless bypassed)
+    if (isMobile && transcriptionMode === 'local' && !bypassMobileWarning && !showMobileWarning) {
       setShowMobileWarning(true)
       return
     }
     
     // Reset warning state
     setShowMobileWarning(false)
-
-    const preferredModel = getPreferredModel()
-    
-    // Check available memory on mobile
-    const availableMemory = getAvailableMemoryMB()
-    if (isMobile && availableMemory !== null && availableMemory < 200) {
-      showAlert({
-        title: 'Low Memory Warning',
-        description: 'Your device may not have enough memory for AI transcription. Consider using live transcription during recording instead.'
-      })
-      return
-    }
     
     setIsTranscribing(true)
     setTranscriptionProgress(null)
@@ -241,16 +250,70 @@ export default function RecordingDetailPage() {
         await db.transcriptions.delete(transcription.id)
       }
 
-      const result = await transcribeAudio(
-        {
-          audioBlob: recording.audioBlob,
-          modelName: preferredModel,
-          // Note: language is optional, undefined means auto-detect
-        },
-        (progress) => {
-          setTranscriptionProgress(progress)
+      let result: {
+        text: string
+        segments: { start: number; end: number; text: string }[]
+        language: string
+        processingTimeMs?: number
+      }
+      let modelUsed: string
+
+      if (transcriptionMode === 'server') {
+        // Server-side transcription
+        setTranscriptionProgress({
+          status: 'processing',
+          progress: 20,
+          message: 'Uploading to server...',
+        })
+        
+        const serverResult = await transcribeOnServer(recording.audioBlob, {
+          duration: recording.duration,
+          onProgress: (progress) => {
+            setTranscriptionProgress({
+              status: progress.status === 'complete' ? 'complete' : 'processing',
+              progress: progress.progress,
+              message: progress.message,
+            })
+          },
+        })
+        
+        result = serverResult.transcription
+        modelUsed = `server:${serverResult.transcription.modelUsed}`
+        
+        // Update usage display
+        setServerUsage(serverResult.usage)
+        
+        // Show privacy note
+        showAlert({
+          title: 'Transcription Complete',
+          description: serverResult.privacy.message,
+        })
+      } else {
+        // Local transcription
+        const preferredModel = getPreferredModel()
+        
+        // Check available memory on mobile
+        const availableMemory = getAvailableMemoryMB()
+        if (isMobile && availableMemory !== null && availableMemory < 200) {
+          showAlert({
+            title: 'Low Memory Warning',
+            description: 'Your device may not have enough memory for AI transcription. Consider using server transcription instead.'
+          })
+          setIsTranscribing(false)
+          return
         }
-      )
+
+        result = await transcribeAudio(
+          {
+            audioBlob: recording.audioBlob,
+            modelName: preferredModel,
+          },
+          (progress) => {
+            setTranscriptionProgress(progress)
+          }
+        )
+        modelUsed = preferredModel
+      }
 
       // Save transcription to database
       const newTranscription: Transcription = {
@@ -260,7 +323,7 @@ export default function RecordingDetailPage() {
         text: result.text,
         segments: result.segments,
         language: result.language,
-        modelUsed: preferredModel,
+        modelUsed,
         processingTimeMs: result.processingTimeMs,
         createdAt: new Date(),
       }
@@ -268,7 +331,7 @@ export default function RecordingDetailPage() {
       await addTranscription(newTranscription)
       setTranscription(newTranscription)
       
-      if (transcription) {
+      if (transcription && transcriptionMode === 'local') {
         showAlert({
           title: 'Re-transcription Complete',
           description: 'Recording has been re-transcribed with updated settings.'
@@ -278,11 +341,16 @@ export default function RecordingDetailPage() {
       console.error('Transcription failed:', error)
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
       
-      // Provide more helpful error message on mobile
-      if (isMobile) {
+      // Provide more helpful error message
+      if (transcriptionMode === 'server' && errorMsg.includes('Monthly limit')) {
+        showAlert({
+          title: 'Monthly Limit Reached',
+          description: `${errorMsg}\n\nTry using local transcription instead (it's unlimited!).`
+        })
+      } else if (isMobile && transcriptionMode === 'local') {
         showAlert({
           title: 'Transcription Failed',
-          description: `${errorMsg}\n\nMobile devices may have trouble with AI transcription due to memory limits. Try using live transcription during recording instead.`
+          description: `${errorMsg}\n\nMobile devices may have trouble with local AI transcription. Try using server transcription instead.`
         })
       } else {
         showAlert({
@@ -362,8 +430,8 @@ export default function RecordingDetailPage() {
   }
 
   return (
-    <div className="p-8 pb-32">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 md:p-8 pb-32">
+      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
         <div>
           <Link 
             to={recording.subjectId ? `/subjects/${recording.subjectId}` : '/subjects'}
@@ -373,8 +441,8 @@ export default function RecordingDetailPage() {
             Back to subject
           </Link>
           
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
               {isEditingTitle ? (
                 <div className="flex items-center gap-2 mb-2">
                   <input
@@ -384,40 +452,40 @@ export default function RecordingDetailPage() {
                     onKeyDown={handleTitleKeyDown}
                     onBlur={handleSaveTitle}
                     autoFocus
-                    className="text-3xl font-bold bg-background border-b-2 border-primary focus:outline-none flex-1"
+                    className="text-xl sm:text-2xl md:text-3xl font-bold bg-background border-b-2 border-primary focus:outline-none flex-1 min-w-0"
                     placeholder="Untitled Recording"
                   />
-                  <Button variant="ghost" size="icon" onClick={handleSaveTitle} className="text-green-600 hover:text-green-700">
+                  <Button variant="ghost" size="icon" onClick={handleSaveTitle} className="text-green-600 hover:text-green-700 flex-shrink-0">
                     <Check size={20} />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={handleCancelEditTitle} className="text-muted-foreground">
+                  <Button variant="ghost" size="icon" onClick={handleCancelEditTitle} className="text-muted-foreground flex-shrink-0">
                     <X size={20} />
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 mb-2">
-                  <h1 className="text-3xl font-bold">{recording.title || 'Untitled Recording'}</h1>
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold break-words">{recording.title || 'Untitled Recording'}</h1>
                   <Button 
                     variant="ghost" 
                     size="icon" 
                     onClick={handleStartEditTitle}
-                    className="sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
+                    className="flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
                   >
                     <Pencil size={16} />
                   </Button>
                 </div>
               )}
               <div className="flex flex-col gap-2 mt-2">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Recorded on {new Date(recording.createdAt).toLocaleDateString()} • {formatTime(recording.duration)} • {(recording.fileSize / 1024 / 1024).toFixed(2)} MB
                 </p>
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="text-muted-foreground">Subject:</span>
                   <select
                     value={recording.subjectId || ''}
                     onChange={(e) => handleMove(e.target.value)}
                     disabled={isMoving}
-                    className="px-2 py-1 bg-background border border-input rounded text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 transition-colors hover:bg-accent"
+                    className="px-2 py-1 bg-background border border-input rounded text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 transition-colors hover:bg-accent max-w-[200px] truncate"
                   >
                     <option value="">No Subject</option>
                     {subjects.map((subject) => (
@@ -430,7 +498,7 @@ export default function RecordingDetailPage() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Button variant="outline" size="icon" onClick={handleDownload}>
                 <Download size={20} />
               </Button>
@@ -442,7 +510,7 @@ export default function RecordingDetailPage() {
         </div>
 
         {/* Audio Player */}
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <audio
             ref={audioRef}
             src={audioUrl || undefined}
@@ -482,9 +550,9 @@ export default function RecordingDetailPage() {
         </Card>
 
         {/* Transcription */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Transcription</h2>
+        <Card className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold">Transcription</h2>
             {!transcription ? (
               <Button 
                 variant="default" 
@@ -498,7 +566,10 @@ export default function RecordingDetailPage() {
                     Transcribing...
                   </>
                 ) : (
-                  'Start Transcription'
+                  <>
+                    {transcriptionMode === 'server' ? <Cloud size={16} /> : <HardDrive size={16} />}
+                    Start Transcription
+                  </>
                 )}
               </Button>
             ) : (
@@ -522,6 +593,131 @@ export default function RecordingDetailPage() {
               </Button>
             )}
           </div>
+          
+          {/* Transcription mode picker - always visible when not transcribing */}
+          {!isTranscribing && (
+            <div className="mb-6 p-3 sm:p-4 bg-muted/50 rounded-lg">
+              {/* Collapsible header when there's already a transcription */}
+              {transcription ? (
+                <button
+                  onClick={() => setShowModeOptions(!showModeOptions)}
+                  className="w-full flex items-center justify-between text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    Current mode: {transcriptionMode === 'local' ? (
+                      <span className="flex items-center gap-1 text-foreground">
+                        <HardDrive size={14} /> Local
+                        {webGPUInfo?.available && (
+                          <span className="text-xs px-1.5 py-0.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded flex items-center gap-0.5">
+                            <Zap size={10} /> GPU
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-foreground">
+                        <Cloud size={14} /> Server
+                        <span className="text-xs text-muted-foreground">({serverUsage?.remaining ?? 0} left)</span>
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    Change
+                    {showModeOptions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 mb-3 text-xs sm:text-sm font-medium text-muted-foreground">
+                  Choose transcription method:
+                </div>
+              )}
+              
+              {/* Mode options - always show for first transcription, toggle for re-transcribe */}
+              {(!transcription || showModeOptions) && (
+                <div className={`grid gap-2 grid-cols-1 sm:grid-cols-2 ${transcription ? 'mt-3 pt-3 border-t border-border' : ''}`}>
+                  {/* Local option */}
+                  <button
+                    onClick={() => canUseLocal && setTranscriptionMode('local')}
+                    disabled={!canUseLocal}
+                    className={`
+                      p-3 rounded-lg border-2 text-left transition-all
+                      ${transcriptionMode === 'local' 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border hover:border-primary/50'
+                      }
+                      ${!canUseLocal ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    `}
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <HardDrive size={18} className={transcriptionMode === 'local' ? 'text-primary' : 'text-muted-foreground'} />
+                      <span className="font-medium">Local (Browser)</span>
+                      <span className="text-xs px-1.5 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded">
+                        Private
+                      </span>
+                      {webGPUInfo && (
+                        <span className={`text-xs px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
+                          webGPUInfo.available 
+                            ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400' 
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {webGPUInfo.available ? <><Zap size={10} /> WebGPU</> : <><Cpu size={10} /> CPU</>}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      100% in your browser. Unlimited use.
+                      {webGPUInfo?.available && webGPUInfo.adapterName && (
+                        <span className="block text-purple-600/70 dark:text-purple-400/70">
+                          Using: {webGPUInfo.adapterName}
+                        </span>
+                      )}
+                    </p>
+                    {!canUseLocal && (
+                      <p className="text-xs text-yellow-600 mt-1">
+                        {isMobile ? 'Requires WebGPU (not available)' : 'Not supported'}
+                      </p>
+                    )}
+                  </button>
+                  
+                  {/* Server option */}
+                  <button
+                    onClick={() => serverAvailable && (serverUsage?.remaining ?? 0) > 0 && setTranscriptionMode('server')}
+                    disabled={!serverAvailable || (serverUsage?.remaining ?? 0) <= 0}
+                    className={`
+                      p-3 rounded-lg border-2 text-left transition-all
+                      ${transcriptionMode === 'server' 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border hover:border-primary/50'
+                      }
+                      ${!serverAvailable || (serverUsage?.remaining ?? 0) <= 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    `}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Cloud size={18} className={transcriptionMode === 'server' ? 'text-primary' : 'text-muted-foreground'} />
+                      <span className="font-medium">Server</span>
+                      <span className="text-xs px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded">
+                        Fast
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {serverAvailable && serverUsage 
+                        ? `${serverUsage.remaining} of 3 free uses left` 
+                        : 'Checking availability...'}
+                    </p>
+                    {serverAvailable && (serverUsage?.remaining ?? 0) <= 0 && (
+                      <p className="text-xs text-yellow-600 mt-1">
+                        Monthly limit reached. Try local transcription!
+                      </p>
+                    )}
+                    {serverAvailable && (serverUsage?.remaining ?? 0) > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Audio deleted immediately after processing
+                      </p>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Mobile warning */}
           {showMobileWarning && (
@@ -575,7 +771,7 @@ export default function RecordingDetailPage() {
           
           {transcription ? (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
                 <span>Language: {transcription.language || 'auto'}</span>
                 <span>Model: {transcription.modelUsed === 'web-speech-api' ? 'Live (Browser)' : transcription.modelUsed}</span>
                 <span>Created: {new Date(transcription.createdAt).toLocaleDateString()}</span>

@@ -33,6 +33,9 @@ db.run("PRAGMA page_size = 4096;")
 console.log(`📦 Database initialized: ${dbPath}`)
 console.log(`📊 WAL mode enabled for optimal Docker performance`)
 
+// Export the database for use in other modules
+export { db }
+
 // Run database migrations on startup
 try {
   const runner = new MigrationRunner(db)

@@ -10,6 +10,8 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card } from '@/components/ui/card'
 import { useSpeechRecognition, type TranscriptSegment } from '@/hooks/use-speech-recognition'
+import { TranscriptionModePicker, MobileTranscriptionWarning } from '@/components/transcription-mode-picker'
+import { type TranscriptionMode } from '@/lib/device-detection'
 import type { Subject, Recording, Transcription, TranscriptionSegment } from '@shared/types'
 
 // Common language options for speech recognition
@@ -43,6 +45,10 @@ export default function RecordPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadDuration, setUploadDuration] = useState<number | null>(null)
   const [isProcessingUpload, setIsProcessingUpload] = useState(false)
+  
+  // Transcription mode (for uploads)
+  const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>('local')
+  const [showMobileWarning, setShowMobileWarning] = useState(true)
   
   // Live transcription options (toggles instead of separate modes)
   const [liveTranscriptionEnabled, setLiveTranscriptionEnabled] = useState(false)
@@ -1001,72 +1007,87 @@ export default function RecordPage() {
           </>
         ) : (
           // Upload UI
-          <Card className="p-6 sm:p-8 md:p-12">
-            <div className="flex flex-col items-center gap-6">
-              <div className="w-full">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="audio/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id="audio-file-input"
-                />
-                
-                {!selectedFile ? (
-                  <label
-                    htmlFor="audio-file-input"
-                    className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed border-input rounded-lg cursor-pointer hover:border-primary transition-colors bg-accent/50"
-                  >
-                    <Upload size={40} className="sm:hidden text-muted-foreground mb-4" />
-                    <Upload size={48} className="hidden sm:block text-muted-foreground mb-4" />
-                    <p className="text-base sm:text-lg font-medium mb-2 px-4 text-center">Click to upload audio file</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground px-4 text-center">
-                      Supports MP3, WAV, M4A, OGG, FLAC, WebM
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Max file size: 500MB
-                    </p>
-                  </label>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="p-4 sm:p-6 border border-input rounded-lg bg-accent/50">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-base sm:text-lg mb-2 break-words">{selectedFile.name}</p>
-                          <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
-                            <p>Size: {formatFileSize(selectedFile.size)}</p>
-                            {uploadDuration && (
-                              <p>Duration: {formatTime(uploadDuration)}</p>
-                            )}
-                            <p>Type: {selectedFile.type || 'Unknown'}</p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleClearFile}
-                          disabled={isProcessingUpload}
-                          className="w-full sm:w-auto"
-                        >
-                          Change
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <Button
-                      onClick={handleUploadSave}
-                      disabled={!session || isProcessingUpload}
-                      className="w-full"
-                      size="lg"
+          <>
+            {/* Mobile Warning */}
+            {showMobileWarning && (
+              <MobileTranscriptionWarning onDismiss={() => setShowMobileWarning(false)} />
+            )}
+            
+            {/* Transcription Mode Picker */}
+            <Card className="p-4 sm:p-6">
+              <TranscriptionModePicker
+                selectedMode={transcriptionMode}
+                onModeChange={setTranscriptionMode}
+              />
+            </Card>
+            
+            <Card className="p-6 sm:p-8 md:p-12">
+              <div className="flex flex-col items-center gap-6">
+                <div className="w-full">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="audio/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="audio-file-input"
+                  />
+                  
+                  {!selectedFile ? (
+                    <label
+                      htmlFor="audio-file-input"
+                      className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed border-input rounded-lg cursor-pointer hover:border-primary transition-colors bg-accent/50"
                     >
-                      {isProcessingUpload ? 'Saving...' : 'Save Recording'}
-                    </Button>
-                  </div>
-                )}
+                      <Upload size={40} className="sm:hidden text-muted-foreground mb-4" />
+                      <Upload size={48} className="hidden sm:block text-muted-foreground mb-4" />
+                      <p className="text-base sm:text-lg font-medium mb-2 px-4 text-center">Click to upload audio file</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground px-4 text-center">
+                        Supports MP3, WAV, M4A, OGG, FLAC, WebM
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Max file size: 500MB
+                      </p>
+                    </label>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="p-4 sm:p-6 border border-input rounded-lg bg-accent/50">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-base sm:text-lg mb-2 break-words">{selectedFile.name}</p>
+                            <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
+                              <p>Size: {formatFileSize(selectedFile.size)}</p>
+                              {uploadDuration && (
+                                <p>Duration: {formatTime(uploadDuration)}</p>
+                              )}
+                              <p>Type: {selectedFile.type || 'Unknown'}</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearFile}
+                            disabled={isProcessingUpload}
+                            className="w-full sm:w-auto"
+                          >
+                            Change
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        onClick={handleUploadSave}
+                        disabled={!session || isProcessingUpload}
+                        className="w-full"
+                        size="lg"
+                      >
+                        {isProcessingUpload ? 'Saving...' : 'Save Recording'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          </>
         )}
 
         {/* Form fields (Subject & Title) */}
