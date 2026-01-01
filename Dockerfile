@@ -42,7 +42,7 @@ ENV VITE_SERVER_URL=${VITE_SERVER_URL:-http://localhost:3000}
 RUN bun run build:single
 
 # Create data directory with proper permissions for runtime
-RUN mkdir -p /app/data && chmod 777 /app/data
+RUN mkdir -p /app/data /app/.cache && chmod 777 /app/data /app/.cache
 
 # Stage 2: Minimal runtime image with glibc
 FROM chainguard/glibc-dynamic:latest

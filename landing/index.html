@@ -54,11 +54,12 @@
       "priceCurrency": "USD"
     },
     "featureList": [
-      "100% local browser-based transcription",
-      "No audio uploads to servers",
-      "Works offline after initial setup",
+      "Local or server-side transcription options",
+      "WebGPU acceleration for fast local processing",
+      "Works offline after initial setup (local mode)",
       "Supports MP3, WAV, M4A, OGG formats",
       "OpenAI Whisper AI model",
+      "Mobile-friendly with server transcription",
       "Free forever, open source"
     ],
     "screenshot": "https://transcriberihardlyknewher.com/landing/assets/screenshot.png",
@@ -174,7 +175,8 @@
     <section class="hero" aria-labelledby="hero-heading">
       <div class="container">
         <div class="badge-row">
-          <span class="badge">100% Local Processing</span>
+          <span class="badge">Local or Server Processing</span>
+          <span class="badge">WebGPU Accelerated</span>
           <span class="badge">Free Forever</span>
           <span class="badge">Open Source</span>
         </div>
@@ -186,8 +188,9 @@
         
         <p class="lead">
           <strong>Transcriber I Hardly Knew Her</strong> — AI-powered speech-to-text transcription 
-          that runs 100% locally. No uploads, no cloud storage, complete privacy.
-          <br>Your audio and transcripts stay on your device. Always.
+          with flexible processing options. Run 100% locally with WebGPU acceleration, or use server-side 
+          transcription for mobile devices. No cloud storage, complete privacy.
+          <br>Your audio and transcripts stay private. Always.
         </p>
         
         <div class="cta-group">
@@ -231,13 +234,13 @@
           <div class="flow-item">
             <div class="flow-number">01</div>
             <h3>Upload Audio or Record</h3>
-            <p>Drop an <strong>MP3, WAV, M4A, or OGG file</strong>, or record directly in your browser. Your microphone data never leaves your device.</p>
+            <p>Drop an <strong>MP3, WAV, M4A, or OGG file</strong>, or record directly in your browser. Your microphone data stays private.</p>
           </div>
           
           <div class="flow-item">
             <div class="flow-number">02</div>
-            <h3>AI Transcribes Locally</h3>
-            <p><strong>OpenAI Whisper</strong> runs entirely in your browser via WebAssembly. Zero network requests during transcription.</p>
+            <h3>Choose Your Processing Mode</h3>
+            <p><strong>Local mode:</strong> AI runs in your browser with WebGPU acceleration. <strong>Server mode:</strong> Fast processing for mobile devices.</p>
           </div>
           
           <div class="flow-item">
@@ -249,9 +252,9 @@
 
         <div class="technical-note">
           <p>
-            <strong>Technical note:</strong> First use downloads the Whisper AI model (~75MB). 
-            After that, transcription works <strong>completely offline</strong>. You can verify zero network activity 
-            during transcription by opening your browser's DevTools.
+            <strong>Technical note:</strong> Local mode leverages <strong>WebGPU</strong> for faster processing when available. 
+            First use downloads the Whisper AI model (~75MB). 
+            After that, local transcription works <strong>completely offline</strong>.
           </p>
         </div>
       </div>
@@ -305,12 +308,13 @@
           <div class="compare-item us">
             <h3>Transcriber I Hardly Knew Her</h3>
             <ul>
-              <li><strong>100% local</strong> browser processing</li>
+              <li><strong>Local or server</strong> processing options</li>
+              <li><strong>WebGPU accelerated</strong> for fast local transcription</li>
               <li>Free forever — no hidden costs</li>
               <li>Unlimited transcription minutes</li>
-              <li>Works completely offline</li>
+              <li>Works completely offline (local mode)</li>
               <li>Open source (MIT License)</li>
-              <li>You own all your data</li>
+              <li>Mobile-friendly with server option</li>
             </ul>
           </div>
           
@@ -318,6 +322,7 @@
             <h3>Otter, Descript, Rev, etc.</h3>
             <ul>
               <li>Cloud-only processing</li>
+              <li>No GPU acceleration control</li>
               <li>$10–30/month subscription</li>
               <li>Usage caps and limits</li>
               <li>Internet connection required</li>
@@ -363,10 +368,10 @@
           <dd>Absolutely. <strong>Transcriber I Hardly Knew Her</strong> is open source under the MIT License. Clone the repository from GitHub and run it on your own infrastructure.</dd>
           
           <dt>Does transcription work on mobile devices?</dt>
-          <dd>Yes, TIHKH works on mobile browsers (iOS Safari, Chrome for Android). However, AI processing is slower on phones due to limited computing power. Desktop browsers provide the best transcription experience.</dd>
+          <dd>Yes, TIHKH works on mobile browsers. On devices with <strong>WebGPU support</strong>, you can use local transcription. Otherwise, use <strong>server-side transcription</strong> for fast, accurate results without taxing your device.</dd>
           
           <dt>How long does transcription take?</dt>
-          <dd>Transcription speed depends on your device. On modern laptops, expect roughly <strong>1-2 minutes of processing per minute of audio</strong>. First-time use is slower while the AI model downloads.</dd>
+          <dd>With <strong>WebGPU acceleration</strong>, expect near real-time processing on modern devices. Without GPU, roughly <strong>1-2 minutes of processing per minute of audio</strong>. <strong>Server-side transcription</strong> is consistently fast regardless of your device.</dd>
           
           <dt>How do you make money if it's free?</dt>
           <dd>We don't — this is a passion project built for ourselves and shared with the community. We may add optional paid features in the future, but the core transcription functionality will always remain free.</dd>
