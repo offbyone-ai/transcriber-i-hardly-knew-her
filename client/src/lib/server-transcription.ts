@@ -93,9 +93,10 @@ export async function getServerUsage(): Promise<UsageInfo | null> {
 
 /**
  * Transcribe audio using the server
+ * Accepts pre-processed Float32Array (16kHz mono) for universal format
  */
 export async function transcribeOnServer(
-  audioBlob: Blob,
+  audioData: Float32Array,
   options: {
     modelName?: string
     language?: string
@@ -111,9 +112,11 @@ export async function transcribeOnServer(
     message: 'Uploading audio to server...',
   })
   
-  // Create form data
+  // Create form data with raw Float32Array
   const formData = new FormData()
-  formData.append('audio', audioBlob, 'audio.webm')
+  // Convert Float32Array to Blob for upload - cast buffer to avoid type issues
+  const audioBlob = new Blob([audioData.buffer as ArrayBuffer], { type: 'application/octet-stream' })
+  formData.append('audio', audioBlob, 'audio.raw')
   formData.append('model', modelName)
   if (language) {
     formData.append('language', language)

@@ -50,13 +50,13 @@ transcriptionRoutes.post('/transcribe', async (c) => {
     
     const contentType = c.req.header('Content-Type') || ''
     
-    let audioBuffer: ArrayBuffer
+    let audioData: Float32Array
     let modelName = 'base.en'
     let language: string | undefined
     let audioLengthSeconds: number | undefined
     
     if (contentType.includes('multipart/form-data')) {
-      // Handle form data upload
+      // Handle form data upload with raw Float32Array
       const formData = await c.req.formData()
       const audioFile = formData.get('audio') as File | null
       modelName = (formData.get('model') as string) || 'base.en'
@@ -68,10 +68,13 @@ transcriptionRoutes.post('/transcribe', async (c) => {
         return c.json({ error: 'No audio file provided' }, 400)
       }
       
-      audioBuffer = await audioFile.arrayBuffer()
+      // Audio file is raw Float32Array binary data
+      const arrayBuffer = await audioFile.arrayBuffer()
+      audioData = new Float32Array(arrayBuffer)
     } else if (contentType.includes('application/octet-stream')) {
-      // Handle raw audio data
-      audioBuffer = await c.req.arrayBuffer()
+      // Handle raw Float32Array binary
+      const arrayBuffer = await c.req.arrayBuffer()
+      audioData = new Float32Array(arrayBuffer)
       modelName = c.req.query('model') || 'base.en'
       language = c.req.query('language') || undefined
       const duration = c.req.query('duration')
@@ -82,10 +85,10 @@ transcriptionRoutes.post('/transcribe', async (c) => {
       }, 400)
     }
     
-    console.log(`📤 Received audio from user ${user.id.slice(0, 8)}...: ${(audioBuffer.byteLength / 1024).toFixed(1)} KB`)
+    console.log(`📤 Received audio from user ${user.id.slice(0, 8)}...: ${audioData.length} samples (${(audioData.length / 16000).toFixed(1)}s)`)
     
     // Transcribe
-    const result = await transcribeAudio(audioBuffer, { modelName, language })
+    const result = await transcribeAudio(audioData, { modelName, language })
     
     // Record usage (ONLY metadata - no audio or transcription content stored)
     await recordTranscriptionUsage(user.id, {

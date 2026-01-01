@@ -10,6 +10,7 @@ import { getPreferredModel } from '@/lib/model-manager'
 import { transcribeAudio, type TranscriptionProgress } from '@/lib/transcription'
 import { transcribeOnServer, getServerTranscriptionStatus, type UsageInfo } from '@/lib/server-transcription'
 import { isMobileDevice, canUseLocalTranscription, getWebGPUInfo, type TranscriptionMode } from '@/lib/device-detection'
+import { convertAudioForWhisper } from '@/lib/audio-processing'
 import type { Recording, Transcription, Subject } from '@shared/types'
 
 // Check available memory (returns estimated MB available, or null if not supported)
@@ -262,11 +263,20 @@ export default function RecordingDetailPage() {
         // Server-side transcription
         setTranscriptionProgress({
           status: 'processing',
+          progress: 10,
+          message: 'Converting audio format...',
+        })
+        
+        // Convert audio to Float32Array (same format for local and server)
+        const audioData = await convertAudioForWhisper(recording.audioBlob)
+        
+        setTranscriptionProgress({
+          status: 'processing',
           progress: 20,
           message: 'Uploading to server...',
         })
         
-        const serverResult = await transcribeOnServer(recording.audioBlob, {
+        const serverResult = await transcribeOnServer(audioData, {
           duration: recording.duration,
           onProgress: (progress) => {
             setTranscriptionProgress({

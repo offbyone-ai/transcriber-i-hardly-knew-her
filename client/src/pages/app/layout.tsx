@@ -39,7 +39,6 @@ export default function AppLayout() {
     <div className="min-h-screen lg:h-screen bg-background flex flex-col lg:flex-row">
       {/* Mobile Header */}
       <header className="lg:hidden sticky top-0 z-40 w-full border-b border-border bg-card px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-bold"></h1>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 hover:bg-accent rounded-lg transition"
@@ -47,6 +46,7 @@ export default function AppLayout() {
         >
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
+        <h1 className="text-lg font-bold"></h1>
       </header>
 
       {/* Sidebar - Desktop & Mobile */}
