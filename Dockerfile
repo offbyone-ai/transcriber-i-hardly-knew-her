@@ -18,9 +18,9 @@ WORKDIR /whisper
 RUN git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git . && \
     cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_FP16=OFF -DGGML_NATIVE=OFF && \
     cmake --build build --config Release -j$(nproc) && \
-    cp build/bin/whisper-cli /usr/local/bin/whisper && 
-    mkdir -p /usr/local/lib/whisper && 
-    cp build/src/libwhisper.so* /usr/local/lib/whisper/ && 
+    cp build/bin/whisper-cli /usr/local/bin/whisper && \
+    mkdir -p /usr/local/lib/whisper && \
+    cp build/src/libwhisper.so* /usr/local/lib/whisper/ && \
     cp build/ggml/src/libggml*.so* /usr/local/lib/whisper/
 
 # Download the base.en model (141MB) - good balance of speed/accuracy
