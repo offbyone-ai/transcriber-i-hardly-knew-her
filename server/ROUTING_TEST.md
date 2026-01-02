@@ -25,8 +25,8 @@ curl -sI http://localhost:3000/app/assets/index-DoJK-WUz.css | grep -E "HTTP|Con
 # App JS
 curl -sI http://localhost:3000/app/assets/index-CHoz22pY.js | grep -E "HTTP|Content-Type"
 
-# Vite SVG
-curl -sI http://localhost:3000/app/vite.svg | grep -E "HTTP|Content-Type"
+# favicon SVG
+curl -sI http://localhost:3000/app/favicon.svg | grep -E "HTTP|Content-Type"
 ```
 
 ### Verify Content (not HTML fallback)
@@ -44,7 +44,7 @@ All assets should return appropriate content types:
 - `/landing/styles.css` → `text/css`
 - `/app/assets/*.css` → `text/css`
 - `/app/assets/*.js` → `text/javascript` or `application/javascript`
-- `/app/vite.svg` → `image/svg+xml`
+- `/app/favicon.svg` → `image/svg+xml`
 
 SPA routes should return HTML:
 - `/app/subjects` → `text/html` (with SPA fallback)

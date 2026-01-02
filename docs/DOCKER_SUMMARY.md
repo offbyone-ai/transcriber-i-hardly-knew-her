@@ -223,7 +223,7 @@ Mach-O 64-bit executable arm64
 ### Static Files
 ```bash
 $ ls server/static/
-assets/  index.html  vite.svg
+assets/  index.html  favicon.svg
 
 $ du -sh server/static/
 560K

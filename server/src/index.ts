@@ -125,9 +125,9 @@ app.use('/assets/*', serveStatic({
   }
 }))
 
-// Serve vite.svg at both /app/vite.svg (used by app) and /vite.svg
-app.get('/app/vite.svg', serveStatic({ path: './static/vite.svg' }))
-app.get('/vite.svg', serveStatic({ path: './static/vite.svg' }))
+// Serve favicon.svg at both /app/favicon.svg (used by app) and /favicon.svg
+app.get('/app/favicon.svg', serveStatic({ path: './static/favicon.svg' }))
+app.get('/favicon.svg', serveStatic({ path: './static/favicon.svg' }))
 
 // Serve React app at /app, /login, /signup routes (these need the SPA)
 app.get('/app', serveStatic({ path: './static/index.html' }))

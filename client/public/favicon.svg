@@ -1,0 +1,29 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Favicon version - optimized for small sizes with bold shapes -->
+  
+  <!-- Background -->
+  <rect width="64" height="64" fill="#ffffff"/>
+  
+  <!-- Microphone capsule - larger and bolder -->
+  <rect x="20" y="8" width="24" height="28" rx="12" fill="#3b82f6"/>
+  
+  <!-- Microphone stem -->
+  <rect x="27" y="36" width="10" height="14" fill="#000000"/>
+  
+  <!-- Microphone base -->
+  <ellipse cx="32" cy="52" rx="8" ry="4" fill="#000000"/>
+  
+  <!-- Sound wave accents - bold and simple -->
+  <path d="M 10 32 Q 14 24 18 32" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M 46 32 Q 50 24 54 32" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  
+  <!-- Dark mode support -->
+  <style>
+    @media (prefers-color-scheme: dark) {
+      rect[fill="#ffffff"] { fill: #0a0a0a; }
+      rect[fill="#3b82f6"] { fill: #60a5fa; }
+      rect[fill="#000000"], ellipse { fill: #f5f5f5; }
+      path { stroke: #60a5fa; }
+    }
+  </style>
+</svg>

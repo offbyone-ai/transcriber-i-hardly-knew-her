@@ -108,7 +108,7 @@ client
 ├── index.html
 ├── package.json
 ├── public
-│   └── vite.svg
+│   └── favicon.svg
 ├── README.md
 ├── src
 │   ├── App.css

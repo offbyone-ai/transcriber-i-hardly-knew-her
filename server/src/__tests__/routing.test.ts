@@ -118,7 +118,7 @@ describe("Routing", () => {
     })
 
     test("SVG assets should be accessible", async () => {
-      const res = await app.request("/app/vite.svg")
+      const res = await app.request("/app/favicon.svg")
       // May or may not exist, but if it does, should be correct type
       if (res.status === 200) {
         const contentType = res.headers.get("content-type")
