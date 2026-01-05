@@ -1,7 +1,7 @@
 # Multi-stage build for Transcriber app using Bun executable
 
 # Stage 1: Build all packages and compile to standalone executable
-FROM --platform=linux/amd64 oven/bun:1-slim AS build
+FROM  oven/bun:1-slim AS build
 WORKDIR /app
 
 # Copy package files for dependency installation

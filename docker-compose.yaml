@@ -1,4 +1,14 @@
 services:
+  # Init container to fix volume permissions for nonroot user (UID 65532)
+  init-permissions:
+    image: busybox:latest
+    container_name: transcriber-init
+    volumes:
+      - transcriber-data:/app/data
+    command: sh -c "chown -R 65532:65532 /app/data && chmod 755 /app/data"
+    networks:
+      - transcriber-network
+
   transcriber:
     build:
       context: .
@@ -7,6 +17,9 @@ services:
         VITE_SERVER_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
     image: transcriber-app:latest
     container_name: transcriber-app
+    depends_on:
+      init-permissions:
+        condition: service_completed_successfully
     ports:
       - "${PORT:-3000}:3000"
     environment:

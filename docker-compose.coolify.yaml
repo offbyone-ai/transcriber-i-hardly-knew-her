@@ -2,6 +2,13 @@
 # This file is specifically configured for Coolify deployments
 
 services:
+  # Init container to fix volume permissions for nonroot user (UID 65532)
+  init-permissions:
+    image: busybox:latest
+    volumes:
+      - transcriber-data:/app/data
+    command: sh -c "chown -R 65532:65532 /app/data && chmod 755 /app/data"
+
   transcriber:
     build:
       context: .
@@ -9,6 +16,9 @@ services:
       args:
         VITE_SERVER_URL: ${BETTER_AUTH_URL}
     image: ${COOLIFY_CONTAINER_NAME:-transcriber-app}:latest
+    depends_on:
+      init-permissions:
+        condition: service_completed_successfully
     ports:
       - "${PORT:-3000}:3000"
     environment:
