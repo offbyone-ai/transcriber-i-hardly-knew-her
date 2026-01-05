@@ -50,6 +50,9 @@ FROM frolvlad/alpine-glibc:latest
 
 WORKDIR /app
 
+# Create nonroot user (UID 65532)
+RUN adduser -D -u 65532 nonroot
+
 # Copy the compiled Bun executable from build stage
 COPY --from=build /app/server/transcriber transcriber
 
