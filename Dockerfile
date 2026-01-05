@@ -45,8 +45,8 @@ RUN bun run build:single
 # Create data directory with proper permissions for runtime
 RUN mkdir -p /app/data && chmod 777 /app/data
 
-# Stage 2: Minimal runtime image with glibc
-FROM chainguard/glibc-dynamic:latest
+# Stage 2: Alpine-based runtime with glibc compatibility
+FROM frolvlad/alpine-glibc:latest
 
 WORKDIR /app
 
@@ -62,21 +62,23 @@ COPY --from=build /app/server/static/ static/
 # Copy landing page files (served at root)
 COPY --from=build /app/landing/ landing/
 
-# Copy data directory with proper permissions
-COPY --from=build --chown=nonroot:nonroot /app/data/ data/
+# Copy entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Create data directory
+RUN mkdir -p /app/data
 
 # Set production environment
 ENV NODE_ENV=production
 ENV PORT=3000
-
-# The nonroot user (UID 65532) already exists in chainguard/glibc-dynamic
 
 # Expose port
 EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD ["/usr/bin/wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Run the standalone executable
-CMD ["./transcriber"]
+# Run via entrypoint (starts as root, drops to nonroot after fixing permissions)
+ENTRYPOINT ["/app/entrypoint.sh"]

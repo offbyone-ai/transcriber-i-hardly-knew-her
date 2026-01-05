@@ -1,29 +1,16 @@
 services:
-  # Init container to fix volume permissions for nonroot user (UID 65532)
-  init-permissions:
-    image: busybox:latest
-    container_name: transcriber-init
-    volumes:
-      - transcriber-data:/app/data
-    command: sh -c "chown -R 65532:65532 /app/data && chmod 755 /app/data"
-    networks:
-      - transcriber-network
-
   transcriber:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         VITE_SERVER_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
-    image: transcriber-app:latest
-    container_name: transcriber-app
-    depends_on:
-      init-permissions:
-        condition: service_completed_successfully
+    image: ${COOLIFY_CONTAINER_NAME:-transcriber-app}:${IMAGE_TAG:-latest}
+    container_name: ${COOLIFY_CONTAINER_NAME:-transcriber-app}
     ports:
       - "${PORT:-3000}:3000"
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
@@ -45,21 +32,43 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
-    networks:
-      - transcriber-network
     deploy:
       resources:
         limits:
-          cpus: "1.0"
-          memory: 512M
+          cpus: "${CPU_LIMIT:-1.0}"
+          memory: ${MEMORY_LIMIT:-512M}
         reservations:
-          cpus: "0.25"
-          memory: 128M
+          cpus: "${CPU_RESERVATION:-0.25}"
+          memory: ${MEMORY_RESERVATION:-128M}
+
+  # Optional automated backup sidecar (set ENABLE_BACKUP=true)
+  backup:
+    image: cgr.dev/chainguard/busybox:latest
+    container_name: ${COOLIFY_CONTAINER_NAME:-transcriber}-backup
+    profiles:
+      - backup
+    volumes:
+      - transcriber-data:/data
+      - transcriber-backups:/backups
+      - ./scripts/backup-db-container.sh:/backup.sh:ro
+    environment:
+      DB_PATH: /data/auth.db
+      BACKUP_DIR: /backups
+      BACKUP_RETENTION: ${BACKUP_RETENTION:-7}
+    command: >
+      sh -c "
+      while true; do
+        /backup.sh $$BACKUP_RETENTION || echo '[Backup] Failed';
+        echo '[Backup] Sleeping for 24 hours...';
+        sleep 86400;
+      done
+      "
+    restart: unless-stopped
+    depends_on:
+      - transcriber
 
 volumes:
   transcriber-data:
     driver: local
-
-networks:
-  transcriber-network:
-    driver: bridge
+  transcriber-backups:
+    driver: local
