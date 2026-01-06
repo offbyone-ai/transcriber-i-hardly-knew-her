@@ -155,7 +155,7 @@ export default function SignupPage() {
 
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" disabled={loading} className="w-full">
-                {loading ? 'Sending...' : 'Create Account'}
+                {loading ? 'Sending...' : 'Create Account with Email'}
               </Button>
 
               <p className="text-center text-sm text-muted-foreground">
@@ -164,6 +164,15 @@ export default function SignupPage() {
                   Sign in
                 </Link>
               </p>
+
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm">
+                <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                  💡 Want to use a passkey?
+                </p>
+                <p className="text-blue-700 dark:text-blue-300 text-xs">
+                  Create your account with email first, then add a passkey in Settings for faster sign-in next time.
+                </p>
+              </div>
             </CardFooter>
           </form>
         </Card>

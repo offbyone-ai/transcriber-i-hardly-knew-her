@@ -60,7 +60,7 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-    <ThemeProvider defaultMode="light" defaultPreset="default" modeStorageKey="transcriber-theme-mode" presetStorageKey="transcriber-theme-preset">
+    <ThemeProvider defaultMode="system" defaultPreset="default" modeStorageKey="transcriber-theme-mode" presetStorageKey="transcriber-theme-preset">
       <AlertProvider>
         <RouterProvider router={router} />
         <Toaster richColors position="top-right" />

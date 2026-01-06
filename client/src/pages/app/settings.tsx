@@ -1,15 +1,51 @@
-import { useState } from 'react'
-import { AlertCircle, Palette, Monitor } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { AlertCircle, Palette, Monitor, Fingerprint, Plus, Trash2 } from 'lucide-react'
 import { WHISPER_MODELS, type WhisperModel } from '@shared/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { getPreferredModel, setPreferredModel } from '@/lib/model-manager'
 import { useTheme, getAvailableThemes, themeModes } from '@/components/theme-provider'
 import type { ThemePreset, ThemeMode } from '@/components/theme-provider'
+import { authClient } from '@/lib/auth-client'
+import { toast } from 'sonner'
 
 export default function SettingsPage() {
   const [preferredModel, setPreferredModelState] = useState<WhisperModel>(getPreferredModel())
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [passkeys, setPasskeys] = useState<any[]>([])
   const { preset, mode, setPreset, setMode } = useTheme()
   const availableThemes = getAvailableThemes()
+
+  async function handleAddPasskey() {
+    setPasskeyLoading(true)
+    try {
+      await authClient.passkey.addPasskey()
+      toast.success('Passkey added successfully!')
+      // Refresh passkey list
+      await loadPasskeys()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add passkey')
+      console.error(err)
+    } finally {
+      setPasskeyLoading(false)
+    }
+  }
+
+  async function loadPasskeys() {
+    try {
+      const result = await authClient.passkey.listUserPasskeys()
+      if (result.data) {
+        setPasskeys(result.data)
+      }
+    } catch (err) {
+      console.error('Failed to load passkeys:', err)
+    }
+  }
+
+  // Load passkeys on mount
+  useEffect(() => {
+    loadPasskeys()
+  }, [])
 
   function handleSetPreferredModel(modelName: WhisperModel) {
     setPreferredModel(modelName)
@@ -67,7 +103,7 @@ export default function SettingsPage() {
                         name="theme-preset"
                         checked={isSelected}
                         onChange={() => handleSetPreset(themePreset.value)}
-                        className="mt-0.5 w-4 h-4 flex-shrink-0"
+                        className="mt-0.5 w-4 h-4 shrink-0"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -124,13 +160,93 @@ export default function SettingsPage() {
             {/* Theme Preview Info */}
             <div className="p-3 sm:p-4 bg-accent rounded-lg">
               <div className="flex items-start gap-2">
-                <AlertCircle size={16} className="mt-0.5 flex-shrink-0 text-muted-foreground" />
+                <AlertCircle size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
                 <div className="text-xs text-muted-foreground space-y-1">
                   <p>
                     <strong>Preview:</strong> Theme changes apply instantly. Each theme preset has unique colors for both light and dark modes.
                   </p>
                   <p>
                     <strong>Tip:</strong> Try different combinations to find your perfect look!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Passkey Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Fingerprint size={20} className="text-primary" />
+              <CardTitle>Passkeys</CardTitle>
+            </div>
+            <CardDescription>
+              Manage your passkeys for faster, passwordless sign-in using biometrics or security keys
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              {passkeys.length > 0 ? (
+                passkeys.map((passkey) => (
+                  <div
+                    key={passkey.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{passkey.name || 'Unnamed Passkey'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Added {new Date(passkey.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await authClient.passkey.deletePasskey({ id: passkey.id })
+                          toast.success('Passkey removed')
+                          await loadPasskeys()
+                        } catch (err: any) {
+                          toast.error(err.message || 'Failed to remove passkey')
+                        }
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  No passkeys configured yet
+                </div>
+              )}
+            </div>
+
+            <Button
+              onClick={handleAddPasskey}
+              disabled={passkeyLoading}
+              className="w-full"
+            >
+              {passkeyLoading ? (
+                'Adding Passkey...'
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add New Passkey
+                </>
+              )}
+            </Button>
+
+            <div className="p-3 bg-accent rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>
+                    <strong>What are passkeys?</strong> Passkeys use biometrics (Face ID, Touch ID, Windows Hello) or security keys to sign you in instantly without passwords or magic links.
+                  </p>
+                  <p>
+                    <strong>Tip:</strong> Add a passkey on each device you use for the fastest sign-in experience.
                   </p>
                 </div>
               </div>
@@ -165,7 +281,7 @@ export default function SettingsPage() {
                     name="model"
                     checked={isPreferred}
                     onChange={() => handleSetPreferredModel(modelName)}
-                    className="w-4 h-4 mt-0.5 flex-shrink-0"
+                    className="w-4 h-4 mt-0.5 shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -195,19 +311,19 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-xs sm:text-sm text-muted-foreground">
             <div className="flex items-start gap-2">
-              <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <p>
                 <strong>First use:</strong> When you transcribe audio with a new model, it will download automatically (1-2 minutes depending on size and connection).
               </p>
             </div>
             <div className="flex items-start gap-2">
-              <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <p>
                 <strong>Subsequent uses:</strong> Models are cached in your browser, so transcription starts instantly.
               </p>
             </div>
             <div className="flex items-start gap-2">
-              <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <p>
                 <strong>Offline-first:</strong> Once downloaded, models work completely offline. Your audio never leaves your device.
               </p>
@@ -222,15 +338,15 @@ export default function SettingsPage() {
           <CardContent>
             <ul className="text-xs sm:text-sm text-muted-foreground space-y-2">
               <li className="flex items-start gap-2">
-                <span className="font-semibold text-foreground min-w-[60px] sm:min-w-[80px]">tiny.en</span>
+                <span className="font-semibold text-foreground min-w-15 sm:min-w-20">tiny.en</span>
                 <span>Fastest processing, good for quick transcriptions and testing. Lower accuracy.</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="font-semibold text-foreground min-w-[60px] sm:min-w-[80px]">base.en</span>
+                <span className="font-semibold text-foreground min-w-15 sm:min-w-20">base.en</span>
                 <span>Best balance of speed and accuracy. Recommended for most users.</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="font-semibold text-foreground min-w-[60px] sm:min-w-[80px]">small.en</span>
+                <span className="font-semibold text-foreground min-w-15 sm:min-w-20">small.en</span>
                 <span>Highest accuracy, slower processing. Best for important transcriptions.</span>
               </li>
             </ul>

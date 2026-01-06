@@ -6,7 +6,7 @@ import type { BetterAuthOptions } from "better-auth"
 import { MigrationRunner } from "./db/migrate"
 import { Resend } from "resend"
 import { magicLink } from "better-auth/plugins"
-
+import { passkey } from "@better-auth/passkey"
 // Use environment variable for database path in Docker, fallback to local path
 const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), "auth.db")
 
@@ -61,6 +61,7 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24, // 1 day
   },
   plugins: [
+    passkey(),
     magicLink({
       sendMagicLink: async ({ email, url, token }) => {
         if (!resend) {
