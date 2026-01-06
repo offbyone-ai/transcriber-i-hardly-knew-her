@@ -14,7 +14,7 @@ services:
       PORT: 3000
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
-      DATABASE_PATH: /app/data/auth.db
+      DATABASE_PATH: ${DATABASE_PATH:-/app/data/auth.db}
     volumes:
       - transcriber-data:/app/data
     restart: unless-stopped
