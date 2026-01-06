@@ -1,4 +1,5 @@
-import { db } from './auth'
+import { db, serverTranscriptionUsage, user } from './db'
+import { eq, and, gte, sql, desc } from 'drizzle-orm'
 
 // Free tier: 3 server transcriptions per month
 export const FREE_TIER_MONTHLY_LIMIT = 3
@@ -28,27 +29,36 @@ function getNextMonthStart(): Date {
 }
 
 /**
+ * Get current month in format "YYYY-MM"
+ */
+function getCurrentMonthYear(): string {
+  const now = new Date()
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/**
  * Get usage info for a user
  */
 export async function getUserUsage(userId: string): Promise<UsageInfo> {
-  const monthStart = getCurrentMonthStart()
+  const monthYear = getCurrentMonthYear()
   const nextMonth = getNextMonthStart()
   
-  // Count transcriptions this month
-  const result = db.query(`
-    SELECT COUNT(*) as count 
-    FROM server_transcription_usage 
-    WHERE user_id = ? AND created_at >= ?
-  `).get(userId, monthStart.toISOString()) as { count: number }
+  // Get usage count for this month
+  const result = await db
+    .select({ usageCount: serverTranscriptionUsage.usageCount })
+    .from(serverTranscriptionUsage)
+    .where(
+      and(
+        eq(serverTranscriptionUsage.userId, userId),
+        eq(serverTranscriptionUsage.monthYear, monthYear)
+      )
+    )
+    .limit(1)
   
-  const used = result?.count || 0
+  const used = result[0]?.usageCount || 0
   
-  // Check if user is premium (future feature)
-  const userResult = db.query(`
-    SELECT is_premium FROM user WHERE id = ?
-  `).get(userId) as { is_premium: number | null } | undefined
-  
-  const isPremium = userResult?.is_premium === 1
+  // For now, everyone is on free tier
+  const isPremium = false
   const limit = isPremium ? Infinity : FREE_TIER_MONTHLY_LIMIT
   
   return {
@@ -81,18 +91,41 @@ export async function recordTranscriptionUsage(
     audioLengthSeconds?: number
   }
 ): Promise<void> {
-  db.run(`
-    INSERT INTO server_transcription_usage (
-      id, user_id, model_used, processing_time_ms, audio_length_seconds, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?)
-  `, [
-    crypto.randomUUID(),
-    userId,
-    metadata.modelUsed,
-    metadata.processingTimeMs,
-    metadata.audioLengthSeconds || null,
-    new Date().toISOString()
-  ])
+  const monthYear = getCurrentMonthYear()
+  const now = new Date()
+  
+  // Try to update existing record for this month
+  const existing = await db
+    .select()
+    .from(serverTranscriptionUsage)
+    .where(
+      and(
+        eq(serverTranscriptionUsage.userId, userId),
+        eq(serverTranscriptionUsage.monthYear, monthYear)
+      )
+    )
+    .limit(1)
+  
+  if (existing.length > 0 && existing[0]) {
+    // Increment count
+    await db
+      .update(serverTranscriptionUsage)
+      .set({ 
+        usageCount: sql`${serverTranscriptionUsage.usageCount} + 1`,
+        updatedAt: now 
+      })
+      .where(eq(serverTranscriptionUsage.id, existing[0].id))
+  } else {
+    // Create new record
+    await db.insert(serverTranscriptionUsage).values({
+      id: crypto.randomUUID(),
+      userId,
+      monthYear,
+      usageCount: 1,
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
   
   console.log(`📊 Usage recorded for user ${userId.slice(0, 8)}... (model: ${metadata.modelUsed})`)
 }
@@ -101,31 +134,18 @@ export async function recordTranscriptionUsage(
  * Get usage history for a user (for transparency)
  */
 export async function getUserUsageHistory(userId: string, limit: number = 10): Promise<Array<{
-  id: string
-  modelUsed: string
-  processingTimeMs: number
-  audioLengthSeconds: number | null
-  createdAt: string
+  monthYear: string
+  usageCount: number
 }>> {
-  const results = db.query(`
-    SELECT id, model_used, processing_time_ms, audio_length_seconds, created_at
-    FROM server_transcription_usage
-    WHERE user_id = ?
-    ORDER BY created_at DESC
-    LIMIT ?
-  `).all(userId, limit) as Array<{
-    id: string
-    model_used: string
-    processing_time_ms: number
-    audio_length_seconds: number | null
-    created_at: string
-  }>
+  const results = await db
+    .select({
+      monthYear: serverTranscriptionUsage.monthYear,
+      usageCount: serverTranscriptionUsage.usageCount,
+    })
+    .from(serverTranscriptionUsage)
+    .where(eq(serverTranscriptionUsage.userId, userId))
+    .orderBy(desc(serverTranscriptionUsage.monthYear))
+    .limit(limit)
   
-  return results.map(r => ({
-    id: r.id,
-    modelUsed: r.model_used,
-    processingTimeMs: r.processing_time_ms,
-    audioLengthSeconds: r.audio_length_seconds,
-    createdAt: r.created_at,
-  }))
+  return results
 }

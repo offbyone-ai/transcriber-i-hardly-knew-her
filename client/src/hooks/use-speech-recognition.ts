@@ -230,9 +230,16 @@ export function useSpeechRecognition(
         return
       }
       
+      // For other errors (like 'network', 'service-not-allowed', etc.)
+      // Stop auto-restart but preserve existing transcript
       const errorMsg = `Speech recognition error: ${event.error}`
       setError(errorMsg)
       onErrorRef.current?.(errorMsg)
+      shouldRestartRef.current = false
+      setIsListening(false)
+      
+      // NOTE: We intentionally DO NOT clear segments/transcript here
+      // to preserve user's data even when recognition fails
     }
 
     recognition.onend = () => {

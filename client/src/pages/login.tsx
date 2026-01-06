@@ -22,10 +22,19 @@ export default function LoginPage() {
 
     try {
       await authClient.signIn.passkey()
-      navigate('/app')
+      navigate('/')
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in with passkey')
-      console.error(err)
+      console.error('Passkey sign-in error:', err)
+      
+      // Check if it's a 401 (no passkey found) or other auth error
+      if (err.status === 401 || err.message?.includes('401') || err.message?.includes('No passkey')) {
+        setError('No passkey found. Please sign in with email first, then add a passkey in Settings.')
+      } else if (err.message?.includes('cancelled') || err.message?.includes('abort')) {
+        // User cancelled the passkey prompt - don't show error
+        setError('')
+      } else {
+        setError(err.message || 'Failed to sign in with passkey')
+      }
     } finally {
       setPasskeyLoading(false)
     }
@@ -39,7 +48,7 @@ export default function LoginPage() {
     try {
       await authClient.signIn.magicLink({
         email,
-        callbackURL: '/app',
+        callbackURL: '/',
       })
       
       setEmailSent(true)
@@ -168,12 +177,27 @@ export default function LoginPage() {
             </CardContent>
 
             <CardFooter className="flex flex-col gap-4">
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? 'Sending...' : 'Send Sign-In Link'}
+              </Button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or if you've set up a passkey
+                  </span>
+                </div>
+              </div>
+
               <Button 
                 type="button" 
                 onClick={handlePasskeySignIn} 
                 disabled={passkeyLoading}
                 className="w-full"
-                variant="default"
+                variant="outline"
               >
                 {passkeyLoading ? (
                   'Authenticating...'
@@ -183,21 +207,6 @@ export default function LoginPage() {
                     Sign In with Passkey
                   </>
                 )}
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with email
-                  </span>
-                </div>
-              </div>
-
-              <Button type="submit" disabled={loading} variant="outline" className="w-full">
-                {loading ? 'Sending...' : 'Send Sign-In Link'}
               </Button>
 
               <p className="text-center text-sm text-muted-foreground">

@@ -61,6 +61,7 @@ export default function RecordPage() {
   })
   const [noSpeechWarning, setNoSpeechWarning] = useState(false)
   const [systemAudioError, setSystemAudioError] = useState<string | null>(null)
+  const [speechRecognitionError, setSpeechRecognitionError] = useState<string | null>(null)
   
   // Transcript segments from Web Speech API (newest first)
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([])
@@ -114,8 +115,9 @@ export default function RecordPage() {
     continuous: true,
     interimResults: true,
     onResult: (text, isFinal) => {
-      // Got speech, clear warning
+      // Got speech, clear warnings and errors
       setNoSpeechWarning(false)
+      setSpeechRecognitionError(null)
       if (noSpeechTimeoutRef.current) {
         clearTimeout(noSpeechTimeoutRef.current)
         noSpeechTimeoutRef.current = null
@@ -143,8 +145,11 @@ export default function RecordPage() {
       console.error('[SpeechRecognition] Error:', err)
       // Don't show error for common non-fatal issues
       if (!err.includes('no-speech') && !err.includes('aborted')) {
-        setError(err)
+        setSpeechRecognitionError(err)
+        // Don't overwrite general error, use specific speech recognition error
       }
+      // IMPORTANT: We do NOT clear transcript segments here
+      // The segments are preserved even if recognition fails
     }
   })
 
@@ -209,6 +214,7 @@ export default function RecordPage() {
 
     setError(null)
     setSystemAudioError(null)
+    setSpeechRecognitionError(null)
     setTranscriptSegments([])
     transcriptSegmentsRef.current = [] // Reset ref too
     setInterimText('')
@@ -959,10 +965,22 @@ export default function RecordPage() {
                     )}
                   </div>
                   
+                  {/* Speech recognition error */}
+                  {speechRecognitionError && (
+                    <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
+                      <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm flex-1">
+                        <p className="font-medium">Live transcription stopped</p>
+                        <p className="mt-1">{speechRecognitionError}</p>
+                        <p className="mt-1 text-muted-foreground">Your transcript has been preserved. You can continue recording and transcribe with Whisper later for better accuracy.</p>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* No speech warning */}
-                  {noSpeechWarning && transcriptSegments.length === 0 && (
+                  {noSpeechWarning && transcriptSegments.length === 0 && !speechRecognitionError && (
                     <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-700 dark:text-yellow-400">
-                      <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                      <AlertCircle size={16} className="shrink-0 mt-0.5" />
                       <div className="text-xs sm:text-sm">
                         <p className="font-medium">No speech detected</p>
                         <p className="mt-1">Make sure you're speaking clearly into the microphone.</p>
