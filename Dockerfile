@@ -65,12 +65,11 @@ COPY --from=build /app/server/static/ static/
 # Copy landing page files (served at root)
 COPY --from=build /app/landing/ landing/
 
-# Copy entrypoint script
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+# Create data directory with proper ownership
+RUN mkdir -p /app/data && chown -R nonroot:nonroot /app/data
 
-# Create data directory
-RUN mkdir -p /app/data
+# Switch to nonroot user
+USER nonroot
 
 # Set production environment
 ENV NODE_ENV=production
@@ -85,3 +84,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Run via entrypoint (starts as root, drops to nonroot after fixing permissions)
 ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["./transcriber"]
