@@ -20,7 +20,7 @@ COPY tsconfig.json ./
 COPY shared/ ./shared/
 COPY server/src/ ./server/src/
 COPY server/tsconfig.json ./server/tsconfig.json
-COPY server/migrations/ ./server/migrations/
+COPY server/drizzle/ ./server/drizzle/
 
 # Install dependencies with frozen lockfile
 # Postinstall will build shared + server packages during this step
@@ -56,8 +56,8 @@ RUN adduser -D -u 65532 nonroot
 # Copy the compiled Bun executable from build stage
 COPY --from=build /app/server/transcriber transcriber
 
-# Copy database migrations directory
-COPY --from=build /app/server/migrations/ migrations/
+# Copy Drizzle database migrations
+COPY --from=build /app/server/drizzle/ drizzle/
 
 # Copy static client files (client build output)
 COPY --from=build /app/server/static/ static/
