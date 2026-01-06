@@ -86,7 +86,8 @@ export const auth = betterAuth({
         }
         
         try {
-          await resend.emails.send({
+          
+          const result = await resend.emails.send({
             from: process.env.FROM_EMAIL || 'noreply@yourdomain.com',
             to: email,
             subject: 'Sign in to Transcriber',
@@ -109,6 +110,9 @@ export const auth = betterAuth({
               </div>
             `,
           })
+          if(!result.data?.id || result.error) {
+            throw new Error(result.error?.message ?? 'Failed to send email')
+          }
           console.log(`✨ Magic link sent to ${email}`)
         } catch (error) {
           console.error(`❌ Failed to send magic link to ${email}:`, error)
