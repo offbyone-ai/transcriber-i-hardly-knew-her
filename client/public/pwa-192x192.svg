@@ -1,0 +1,19 @@
+<svg viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- PWA Icon 192x192 - Transcriber microphone with background -->
+  
+  <!-- Solid background for PWA (no transparency) -->
+  <rect width="192" height="192" rx="24" fill="#0f172a"/>
+  
+  <!-- Microphone capsule -->
+  <rect x="60" y="24" width="72" height="84" rx="36" fill="#3b82f6"/>
+  
+  <!-- Microphone stem -->
+  <rect x="81" y="108" width="30" height="42" fill="#f8fafc"/>
+  
+  <!-- Microphone base -->
+  <ellipse cx="96" cy="156" rx="24" ry="12" fill="#f8fafc"/>
+  
+  <!-- Sound wave accents -->
+  <path d="M 30 96 Q 42 72 54 96" stroke="#3b82f6" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M 138 96 Q 150 72 162 96" stroke="#3b82f6" stroke-width="6" fill="none" stroke-linecap="round"/>
+</svg>
