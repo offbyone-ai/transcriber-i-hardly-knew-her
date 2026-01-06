@@ -1,17 +1,18 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { signIn } from '@/lib/auth-client'
+import { Link } from 'react-router-dom'
+import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Mail } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function LoginPage() {
-  const navigate = useNavigate()
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -19,32 +20,93 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const result = await signIn.email(
-        {
-          email,
-          password,
-        },
-        {
-          onSuccess: () => {
-            // Navigate after successful login
-            navigate('/')
-          },
-          onError: (ctx) => {
-            setError(ctx.error.message || 'Login failed')
-          },
-        }
-      )
-
-      // Handle legacy error format if onError callback didn't fire
-      if (result?.error && result.error.message) {
-        setError(result.error.message)
+      await authClient.signIn.magicLink({
+        email,
+        callbackURL: '/app',
+      })
+      
+      setEmailSent(true)
+      
+      // In development, check if there's a magic link to show
+      if (import.meta.env.DEV) {
+        setTimeout(async () => {
+          try {
+            const response = await fetch(`/api/dev/magic-link/${encodeURIComponent(email)}`)
+            if (response.ok) {
+              const data = await response.json()
+              if (data.url) {
+                toast.success('Development Magic Link', {
+                  description: 'Click to sign in instantly',
+                  action: {
+                    label: 'Sign In',
+                    onClick: () => window.location.href = data.url
+                  },
+                  duration: 300000, // 5 minutes
+                })
+              }
+            }
+          } catch (e) {
+            // Silently fail - not critical
+          }
+        }, 500)
       }
-    } catch (err) {
-      setError('An unexpected error occurred')
+    } catch (err: any) {
+      setError(err.message || 'Failed to send sign-in link')
       console.error(err)
     } finally {
       setLoading(false)
     }
+  }
+
+  if (emailSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-primary/10 p-3">
+                  <Mail className="h-12 w-12 text-primary" />
+                </div>
+              </div>
+              <CardTitle>Check your email</CardTitle>
+              <CardDescription>
+                We've sent a sign-in link to <strong>{email}</strong>
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-4">
+              <div className="bg-muted rounded-lg p-4 space-y-2">
+                <p className="text-sm font-medium">Next steps:</p>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Open the email we just sent you</li>
+                  <li>Click the sign-in link</li>
+                  <li>Start transcribing!</li>
+                </ol>
+              </div>
+              
+              <div className="text-sm text-muted-foreground">
+                <p className="font-medium mb-1">Note:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>The link expires in 5 minutes</li>
+                  <li>Check your spam folder if you don't see it</li>
+                </ul>
+              </div>
+            </CardContent>
+
+            <CardFooter className="flex flex-col gap-2">
+              <Button 
+                onClick={() => setEmailSent(false)} 
+                variant="outline" 
+                className="w-full"
+              >
+                Send Another Link
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -53,14 +115,14 @@ export default function LoginPage() {
         <div className="text-center">
           <h1 className="text-4xl font-bold">Welcome back</h1>
           <p className="text-muted-foreground mt-2">
-            Sign in to your account to continue
+            Sign in with your email - no password needed
           </p>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
-            <CardDescription>Enter your credentials to access your account</CardDescription>
+            <CardDescription>We'll send you a secure sign-in link</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
@@ -79,31 +141,24 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="you@example.com"
+                  autoFocus
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                />
+              <div className="bg-muted rounded-lg p-3 text-sm text-muted-foreground">
+                💡 <strong>Passwordless & secure:</strong> We'll email you a magic link to sign in safely.
               </div>
             </CardContent>
 
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" disabled={loading} className="w-full">
-                {loading ? 'Signing in...' : 'Sign in'}
+                {loading ? 'Sending...' : 'Send Sign-In Link'}
               </Button>
 
               <p className="text-center text-sm text-muted-foreground">
-                Don't have an account?{' '}
+                New to Transcriber?{' '}
                 <Link to="/signup" className="text-primary hover:underline">
-                  Sign up
+                  Create an account
                 </Link>
               </p>
             </CardFooter>

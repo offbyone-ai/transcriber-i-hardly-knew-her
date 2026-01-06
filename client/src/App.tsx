@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from './components/theme-provider'
 import { AlertProvider } from './components/alert-provider'
+import { Toaster } from './components/ui/sonner'
 import './index.css'
 
 // Import pages
@@ -62,6 +63,7 @@ function App() {
     <ThemeProvider defaultMode="light" defaultPreset="default" modeStorageKey="transcriber-theme-mode" presetStorageKey="transcriber-theme-preset">
       <AlertProvider>
         <RouterProvider router={router} />
+        <Toaster richColors position="top-right" />
       </AlertProvider>
     </ThemeProvider>
   )

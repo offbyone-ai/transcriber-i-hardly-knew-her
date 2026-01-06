@@ -16,6 +16,7 @@
   "dependencies": {
     "better-auth": "^1.4.9",
     "hono": "^4.10.8",
+    "resend": "^6.6.0",
     "shared": "workspace:*"
   },
   "devDependencies": {

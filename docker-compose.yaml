@@ -15,6 +15,8 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       DATABASE_PATH: ${DATABASE_PATH:-/app/data/auth.db}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      FROM_EMAIL: ${FROM_EMAIL:-noreply@yourdomain.com}
     volumes:
       - transcriber-data:/app/data
     restart: unless-stopped

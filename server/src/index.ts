@@ -68,6 +68,23 @@ app.on(['POST', 'GET'], '/api/auth/*', (c) => {
   return auth.handler(c.req.raw)
 })
 
+// Development-only endpoint to get magic link URL
+app.get('/api/dev/magic-link/:email', (c) => {
+  // Only allow in development
+  if (process.env.NODE_ENV === 'production') {
+    return c.json({ error: 'Not available in production' }, 403)
+  }
+  
+  const email = c.req.param('email')
+  const url = (global as any).devMagicLinks?.get(email)
+  
+  if (url) {
+    return c.json({ url })
+  } else {
+    return c.json({ error: 'No magic link found' }, 404)
+  }
+})
+
 // Mount server-side transcription routes
 app.route('/api/transcription', transcriptionRoutes)
 
