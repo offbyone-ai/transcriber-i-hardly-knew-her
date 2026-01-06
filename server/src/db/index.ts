@@ -7,7 +7,8 @@
 import { drizzle } from 'drizzle-orm/bun-sqlite'
 import { Database } from 'bun:sqlite'
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator'
-import { mkdirSync, existsSync } from 'node:fs'
+import { mkdirSync, existsSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import path from 'path'
 import * as schema from './schema'
 
@@ -48,6 +49,10 @@ export { sqlite }
 
 /**
  * Run database migrations on startup
+ * 
+ * Handles migration from old custom migration system to Drizzle:
+ * - If tables exist but __drizzle_migrations doesn't, we baseline it
+ * - This allows existing databases to work with Drizzle's migration system
  */
 export function runMigrations() {
   try {
@@ -57,12 +62,103 @@ export function runMigrations() {
     console.log('🔄 Running database migrations...')
     console.log(`  📁 Migrations folder: ${migrationsFolder}`)
     
-    migrate(db, { migrationsFolder })
+    // Check if this is an existing database that needs baselining
+    // (tables exist but Drizzle doesn't know about them)
+    const needsBaseline = checkNeedsBaseline()
     
-    console.log('✅ Database migrations completed')
+    if (needsBaseline) {
+      console.log('📋 Existing database detected, baselining Drizzle migrations...')
+      baselineMigrations(migrationsFolder)
+      console.log('✅ Database baseline completed')
+    } else {
+      migrate(db, { migrationsFolder })
+      console.log('✅ Database migrations completed')
+    }
   } catch (error) {
     console.error('❌ Failed to run database migrations:', error)
     throw error
+  }
+}
+
+/**
+ * Check if database has tables but no Drizzle migration tracking
+ */
+function checkNeedsBaseline(): boolean {
+  try {
+    // Check if user table exists (indicates old migration system was used)
+    const userTableExists = sqlite.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='user'"
+    ).get()
+    
+    if (!userTableExists) {
+      // Fresh database, no baseline needed
+      return false
+    }
+    
+    // Check if Drizzle migrations table exists and has entries
+    const drizzleTableExists = sqlite.query(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'"
+    ).get()
+    
+    if (!drizzleTableExists) {
+      // Tables exist but Drizzle doesn't know about them
+      return true
+    }
+    
+    // Check if there are any migration entries
+    const migrationCount = sqlite.query(
+      "SELECT COUNT(*) as count FROM __drizzle_migrations"
+    ).get() as { count: number } | null
+    
+    if (!migrationCount || migrationCount.count === 0) {
+      // Drizzle table exists but is empty
+      return true
+    }
+    
+    return false
+  } catch {
+    // If any error, assume fresh database
+    return false
+  }
+}
+
+/**
+ * Baseline existing database by marking initial migration as applied
+ */
+function baselineMigrations(migrationsFolder: string) {
+  // Read the journal to get migration info
+  const journalPath = path.join(migrationsFolder, 'meta', '_journal.json')
+  const journal = JSON.parse(readFileSync(journalPath, 'utf-8'))
+  
+  // Create Drizzle migrations table if it doesn't exist
+  sqlite.run(`
+    CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      hash TEXT NOT NULL,
+      created_at INTEGER
+    )
+  `)
+  
+  // Insert all existing migrations as already applied
+  for (const entry of journal.entries) {
+    const migrationPath = path.join(migrationsFolder, `${entry.tag}.sql`)
+    const sql = readFileSync(migrationPath, 'utf-8')
+    
+    // Calculate hash the same way Drizzle does (simple hash of content)
+    const hash = createHash('sha256').update(sql).digest('hex')
+    
+    // Check if already recorded
+    const existing = sqlite.query(
+      "SELECT id FROM __drizzle_migrations WHERE hash = ?"
+    ).get(hash)
+    
+    if (!existing) {
+      sqlite.run(
+        "INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)",
+        [hash, entry.when]
+      )
+      console.log(`  📝 Recorded baseline: ${entry.tag}`)
+    }
   }
 }
 
