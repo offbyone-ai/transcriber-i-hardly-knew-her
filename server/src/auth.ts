@@ -11,8 +11,8 @@ import { passkey } from "@better-auth/passkey"
 import { db, sqlite, runMigrations } from "./db"
 import * as schema from "./db/schema"
 
-// Run database migrations on startup
-runMigrations()
+// Run database migrations on startup (ensure they complete before initialization)
+await runMigrations()
 
 // Initialize Resend for email sending (if API key is configured)
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null

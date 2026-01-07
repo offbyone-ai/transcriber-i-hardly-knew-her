@@ -52,7 +52,7 @@ export { sqlite }
  * Migrations use IF NOT EXISTS for idempotent execution.
  * This safely handles existing databases from old migration system.
  */
-export function runMigrations() {
+export async function runMigrations() {
   try {
     // Resolve migrations folder path
     const migrationsFolder = resolveMigrationsPath()
@@ -60,7 +60,7 @@ export function runMigrations() {
     console.log('🔄 Running database migrations...')
     console.log(`  📁 Migrations folder: ${migrationsFolder}`)
     
-    migrate(db, { migrationsFolder })
+    await migrate(db, { migrationsFolder })
     
     console.log('✅ Database migrations completed')
   } catch (error) {
