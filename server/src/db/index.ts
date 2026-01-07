@@ -7,7 +7,7 @@
 import { drizzle } from 'drizzle-orm/bun-sqlite'
 import { Database } from 'bun:sqlite'
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator'
-import { mkdirSync, existsSync } from 'node:fs'
+import { mkdirSync, existsSync, readdirSync, statSync } from 'node:fs'
 import path from 'path'
 import * as schema from './schema'
 
@@ -59,7 +59,28 @@ export async function runMigrations() {
     
     console.log('🔄 Running database migrations...')
     console.log(`  📁 Migrations folder: ${migrationsFolder}`)
-    
+
+    // Diagnostic: list migration files present in the migrations folder
+    let migrationFiles: string[] = []
+    try {
+      migrationFiles = readdirSync(migrationsFolder).filter((f) => /\.sql$|\.js$|\.ts$/.test(f)).sort()
+      console.log(`  🔍 Migration files (${migrationFiles.length}): ${migrationFiles.join(', ') || '<none>'}`)
+    } catch (err) {
+      console.warn(`  ⚠️ Could not read migrations folder: ${String(err)}`)
+    }
+
+    // Diagnostic: report DB file existence and size (if available)
+    try {
+      if (existsSync(dbPath)) {
+        const s = statSync(dbPath)
+        console.log(`  🗃 Database file: ${dbPath} (${s.size} bytes)`)
+      } else {
+        console.log(`  🗃 Database file not found at ${dbPath} — it will be created`)
+      }
+    } catch (err) {
+      console.warn(`  ⚠️ Could not stat DB file: ${String(err)}`)
+    }
+
     await migrate(db, { migrationsFolder })
     
     console.log('✅ Database migrations completed')
