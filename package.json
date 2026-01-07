@@ -42,7 +42,7 @@
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "bun-types": "latest",
-    "turbo": "^2.6.3"
+    "turbo": "^2.7.3"
   },
   "peerDependencies": {
     "typescript": "^5.8.3"
