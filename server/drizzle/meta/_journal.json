@@ -8,6 +8,13 @@
       "when": 1767735532068,
       "tag": "0000_unusual_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1736208000000,
+      "tag": "0001_ensure_all_tables",
+      "breakpoints": true
     }
   ]
 }

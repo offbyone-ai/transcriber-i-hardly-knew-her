@@ -22,7 +22,7 @@ export default function SignupPage() {
     try {
       await authClient.signIn.magicLink({
         email,
-        callbackURL: '/',
+        callbackURL: '/app',
       })
       
       setEmailSent(true)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,6 @@ import { Mail, Fingerprint } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function LoginPage() {
-  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -21,8 +20,11 @@ export default function LoginPage() {
     setPasskeyLoading(true)
 
     try {
-      await authClient.signIn.passkey()
-      navigate('/')
+      const result = await authClient.signIn.passkey()
+      // Passkey auth is local, so we navigate manually on success
+      if (result?.data) {
+        window.location.href = '/app'
+      }
     } catch (err: any) {
       console.error('Passkey sign-in error:', err)
       
@@ -48,7 +50,7 @@ export default function LoginPage() {
     try {
       await authClient.signIn.magicLink({
         email,
-        callbackURL: '/',
+        callbackURL: '/app',
       })
       
       setEmailSent(true)

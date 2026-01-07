@@ -4,7 +4,7 @@ import { useSession } from '@/lib/auth-client'
 import { db } from '@/lib/db'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Folder, Mic, FileText } from 'lucide-react'
+import { Folder, Mic, FileText, ArrowRight } from 'lucide-react'
 import type { Subject, Recording } from '@shared/types'
 
 export default function DashboardPage() {
@@ -70,26 +70,52 @@ export default function DashboardPage() {
   return (
     <div className="p-4 sm:p-6 md:p-8 pb-32">
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Your transcription overview
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+              Your transcription overview
+            </p>
+          </div>
+          
+          {/* Quick Actions */}
+          <div className="flex gap-2 sm:gap-3">
+            <Link to="/record">
+              <Button className="gap-2">
+                <Mic size={18} />
+                <span className="hidden sm:inline">New Recording</span>
+                <span className="sm:hidden">Record</span>
+              </Button>
+            </Link>
+            <Link to="/subjects">
+              <Button variant="outline" className="gap-2">
+                <Folder size={18} />
+                <span className="hidden sm:inline">Subjects</span>
+                <span className="sm:hidden">Subjects</span>
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-          <StatCard
-            label="Total Subjects"
-            value={stats.subjects.toString()}
-            description="Organized collections"
-            icon={<Folder size={24} />}
-          />
-          <StatCard
-            label="Total Recordings"
-            value={stats.recordings.toString()}
-            description="Audio files stored"
-            icon={<Mic size={24} />}
-          />
+          <Link to="/subjects">
+            <StatCard
+              label="Total Subjects"
+              value={stats.subjects.toString()}
+              description="Organized collections"
+              icon={<Folder size={24} />}
+              clickable
+            />
+          </Link>
+          <Link to="/record">
+            <StatCard
+              label="Total Recordings"
+              value={stats.recordings.toString()}
+              description="Audio files stored"
+              icon={<Mic size={24} />}
+              clickable
+            />
+          </Link>
           <StatCard
             label="Total Transcriptions"
             value={stats.transcriptions.toString()}
@@ -198,19 +224,24 @@ function StatCard({
   value, 
   description,
   icon,
+  clickable = false,
 }: { 
   label: string
   value: string
   description: string
   icon: React.ReactNode
+  clickable?: boolean
 }) {
   return (
-    <Card className="p-4 sm:p-6">
+    <Card className={`p-4 sm:p-6 transition-colors ${clickable ? 'hover:bg-accent cursor-pointer' : ''}`}>
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <div className="text-xs sm:text-sm text-muted-foreground">{label}</div>
           <div className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">{value}</div>
-          <div className="text-xs text-muted-foreground mt-1">{description}</div>
+          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+            {description}
+            {clickable && <ArrowRight size={12} className="opacity-50" />}
+          </div>
         </div>
         <div className="text-muted-foreground shrink-0 ml-2">{icon}</div>
       </div>
