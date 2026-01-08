@@ -7,12 +7,27 @@
 import { drizzle } from 'drizzle-orm/bun-sqlite'
 import { Database } from 'bun:sqlite'
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator'
-import { mkdirSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { mkdirSync, existsSync, readdirSync, statSync, unlinkSync } from 'node:fs'
 import path from 'path'
 import * as schema from './schema'
 
 // Use environment variable for database path in Docker, fallback to local path
 const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'auth.db')
+
+// TEMPORARY: Delete existing database to fix corrupted migration state
+// TODO: Remove this block after successful deployment
+if (existsSync(dbPath)) {
+  console.log('🗑️  TEMPORARY: Deleting existing database to fix migration state...')
+  try {
+    unlinkSync(dbPath)
+    // Also clean up WAL files if they exist
+    if (existsSync(dbPath + '-wal')) unlinkSync(dbPath + '-wal')
+    if (existsSync(dbPath + '-shm')) unlinkSync(dbPath + '-shm')
+    console.log('✅ Database files deleted')
+  } catch (err) {
+    console.warn('⚠️  Could not delete database:', err)
+  }
+}
 
 // Ensure data directory exists
 const dbDir = path.dirname(dbPath)
