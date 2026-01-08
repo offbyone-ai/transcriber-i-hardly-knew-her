@@ -2,8 +2,16 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/bun'
 import type { ApiResponse } from 'shared/dist'
+import { runMigrations } from './db'
 import { auth } from './auth'
 import { transcriptionRoutes } from './transcription-routes'
+
+// Run database migrations on startup
+// Uses promise chain to avoid top-level await (not supported in Bun compile)
+runMigrations().catch(err => {
+  console.error('❌ Failed to run database migrations:', err)
+  process.exit(1)
+})
 
 const app = new Hono()
 
