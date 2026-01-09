@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X, AlertTriangle, Smartphone, Cloud, HardDrive, Zap, Cpu, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X, AlertTriangle, Smartphone, Cloud, HardDrive, Zap, Cpu, ChevronDown, ChevronUp, FileText, FileDown } from 'lucide-react'
 import { db, deleteRecording, addTranscription, updateRecordingSubject, updateRecordingTitle, fixRecordingDuration } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -11,6 +11,7 @@ import { transcribeAudio, type TranscriptionProgress } from '@/lib/transcription
 import { transcribeOnServer, getServerTranscriptionStatus, type UsageInfo } from '@/lib/server-transcription'
 import { isMobileDevice, canUseLocalTranscription, getWebGPUInfo, type TranscriptionMode } from '@/lib/device-detection'
 import { convertAudioForWhisper } from '@/lib/audio-processing'
+import { exportTranscription, EXPORT_FORMATS, type ExportFormat } from '@/lib/export'
 import type { Recording, Transcription, Subject } from '@shared/types'
 
 // Check available memory (returns estimated MB available, or null if not supported)
@@ -47,6 +48,9 @@ export default function RecordingDetailPage() {
   const [editedTitle, setEditedTitle] = useState('')
   const [showMobileWarning, setShowMobileWarning] = useState(false)
   const [isMobile] = useState(() => isMobileDevice())
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
   
   // Transcription mode state
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>(() => {
@@ -427,6 +431,39 @@ export default function RecordingDetailPage() {
     return `${mins}:${String(secs).padStart(2, '0')}`
   }
 
+  // Close export menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  async function handleExport(format: ExportFormat) {
+    if (!transcription || !recording) return
+
+    setIsExporting(true)
+    try {
+      await exportTranscription(format, transcription, recording)
+      showAlert({
+        title: 'Export Complete',
+        description: `Transcription exported as ${format.toUpperCase()}`
+      })
+    } catch (error) {
+      console.error('Export failed:', error)
+      showAlert({
+        title: 'Export Failed',
+        description: error instanceof Error ? error.message : 'Unknown error'
+      })
+    } finally {
+      setIsExporting(false)
+      setShowExportMenu(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="p-8 flex items-center justify-center">
@@ -781,20 +818,60 @@ export default function RecordingDetailPage() {
           
           {transcription ? (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
-                <span>Language: {transcription.language || 'auto'}</span>
-                <span>Model: {transcription.modelUsed === 'web-speech-api' ? 'Live (Browser)' : transcription.modelUsed}</span>
-                <span>Created: {new Date(transcription.createdAt).toLocaleDateString()}</span>
-                {transcription.processingTimeMs && (
-                  <span>Processing: {(transcription.processingTimeMs / 1000).toFixed(1)}s</span>
-                )}
-                {transcription.modelUsed === 'web-speech-api' && (
-                  <span className="text-yellow-600 dark:text-yellow-500">
-                    (Live transcription - re-transcribe with Whisper for higher accuracy)
-                  </span>
-                )}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+                  <span>Language: {transcription.language || 'auto'}</span>
+                  <span>Model: {transcription.modelUsed === 'web-speech-api' ? 'Live (Browser)' : transcription.modelUsed}</span>
+                  <span>Created: {new Date(transcription.createdAt).toLocaleDateString()}</span>
+                  {transcription.processingTimeMs && (
+                    <span>Processing: {(transcription.processingTimeMs / 1000).toFixed(1)}s</span>
+                  )}
+                  {transcription.modelUsed === 'web-speech-api' && (
+                    <span className="text-yellow-600 dark:text-yellow-500">
+                      (Live transcription - re-transcribe with Whisper for higher accuracy)
+                    </span>
+                  )}
+                </div>
+
+                {/* Export dropdown */}
+                <div className="relative" ref={exportMenuRef}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    disabled={isExporting}
+                  >
+                    {isExporting ? (
+                      <Loader2 size={16} className="animate-spin mr-1" />
+                    ) : (
+                      <FileDown size={16} className="mr-1" />
+                    )}
+                    Export
+                    <ChevronDown size={14} className="ml-1" />
+                  </Button>
+
+                  {showExportMenu && (
+                    <div className="absolute right-0 mt-1 w-56 bg-background border border-border rounded-lg shadow-lg z-50">
+                      <div className="p-1">
+                        {EXPORT_FORMATS.map((format) => (
+                          <button
+                            key={format.id}
+                            onClick={() => handleExport(format.id)}
+                            className="w-full flex items-start gap-3 px-3 py-2 text-left hover:bg-accent rounded-md transition-colors"
+                          >
+                            <FileText size={16} className="mt-0.5 text-muted-foreground" />
+                            <div>
+                              <div className="text-sm font-medium">{format.label}</div>
+                              <div className="text-xs text-muted-foreground">{format.description}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              
+
               <div className="prose prose-sm max-w-none">
                 <div className="whitespace-pre-wrap text-foreground">
                   {transcription.text}
