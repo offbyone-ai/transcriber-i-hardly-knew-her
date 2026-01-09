@@ -197,7 +197,7 @@ export default function SettingsPage() {
                     <div>
                       <p className="font-medium text-sm">{passkey.name || 'Unnamed Passkey'}</p>
                       <p className="text-xs text-muted-foreground">
-                        Added {new Date(passkey.createdAt).toLocaleDateString()}
+                        Added {passkey.createdAt ? new Date(passkey.createdAt).toLocaleDateString() : 'Unknown'}
                       </p>
                     </div>
                     <Button
