@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 export default function SettingsPage() {
   const [preferredModel, setPreferredModelState] = useState<WhisperModel>(getPreferredModel())
   const [passkeyLoading, setPasskeyLoading] = useState(false)
-  const [passkeys, setPasskeys] = useState<any[]>([])
+  const [passkeys, setPasskeys] = useState<Array<{ id: string; name?: string; createdAt?: Date }>>([])
   const { preset, mode, setPreset, setMode } = useTheme()
   const availableThemes = getAvailableThemes()
 
@@ -23,8 +23,9 @@ export default function SettingsPage() {
       toast.success('Passkey added successfully!')
       // Refresh passkey list
       await loadPasskeys()
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to add passkey')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add passkey'
+      toast.error(message)
       console.error(err)
     } finally {
       setPasskeyLoading(false)
@@ -207,8 +208,9 @@ export default function SettingsPage() {
                           await authClient.passkey.deletePasskey({ id: passkey.id })
                           toast.success('Passkey removed')
                           await loadPasskeys()
-                        } catch (err: any) {
-                          toast.error(err.message || 'Failed to remove passkey')
+                        } catch (err) {
+                          const message = err instanceof Error ? err.message : 'Failed to remove passkey'
+                          toast.error(message)
                         }
                       }}
                     >

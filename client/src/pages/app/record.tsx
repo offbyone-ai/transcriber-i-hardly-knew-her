@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Card } from '@/components/ui/card'
 import { useSpeechRecognition, type TranscriptSegment } from '@/hooks/use-speech-recognition'
 import { TranscriptionModePicker, MobileTranscriptionWarning } from '@/components/transcription-mode-picker'
-import { type TranscriptionMode } from '@/lib/device-detection'
+import type { TranscriptionMode } from '@/lib/device-detection'
 import type { Subject, Recording, Transcription, TranscriptionSegment } from '@shared/types'
 
 // Common language options for speech recognition
@@ -624,7 +624,7 @@ export default function RecordPage() {
       
       try {
         audio.src = URL.createObjectURL(file)
-      } catch (err) {
+      } catch {
         cleanup()
         reject(new Error('Failed to create audio preview. The file may be corrupted.'))
       }

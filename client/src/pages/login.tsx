@@ -25,17 +25,18 @@ export default function LoginPage() {
       if (result?.data) {
         window.location.href = '/app'
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Passkey sign-in error:', err)
-      
+
       // Check if it's a 401 (no passkey found) or other auth error
-      if (err.status === 401 || err.message?.includes('401') || err.message?.includes('No passkey')) {
+      const errObj = err as { status?: number; message?: string }
+      if (errObj.status === 401 || errObj.message?.includes('401') || errObj.message?.includes('No passkey')) {
         setError('No passkey found. Please sign in with email first, then add a passkey in Settings.')
-      } else if (err.message?.includes('cancelled') || err.message?.includes('abort')) {
+      } else if (errObj.message?.includes('cancelled') || errObj.message?.includes('abort')) {
         // User cancelled the passkey prompt - don't show error
         setError('')
       } else {
-        setError(err.message || 'Failed to sign in with passkey')
+        setError(errObj.message || 'Failed to sign in with passkey')
       }
     } finally {
       setPasskeyLoading(false)
@@ -73,13 +74,14 @@ export default function LoginPage() {
                 })
               }
             }
-          } catch (e) {
+          } catch {
             // Silently fail - not critical
           }
         }, 500)
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to send sign-in link')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to send sign-in link'
+      setError(message)
       console.error(err)
     } finally {
       setLoading(false)

@@ -45,13 +45,14 @@ export default function SignupPage() {
                 })
               }
             }
-          } catch (e) {
+          } catch {
             // Silently fail - not critical
           }
         }, 500)
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to send sign-up link')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to send sign-up link'
+      setError(message)
       console.error(err)
     } finally {
       setLoading(false)

@@ -72,170 +72,159 @@ export async function transcribeAudio(
   console.log('Starting transcription with model:', task.modelName)
   console.log('[Transcription] Using Web Worker approach')
   
-  return new Promise(async (resolve, reject) => {
-    try {
-      onProgress?.({
-        status: 'loading',
-        progress: 10,
-        message: 'Converting audio format...',
-      })
+  onProgress?.({
+    status: 'loading',
+    progress: 10,
+    message: 'Converting audio format...',
+  })
 
-      // Convert audio to format expected by Whisper
-      const audioData = await convertAudioForWhisper(task.audioBlob)
-      console.log('Audio converted, samples:', audioData.length)
+  // Convert audio to format expected by Whisper
+  const audioData = await convertAudioForWhisper(task.audioBlob)
+  console.log('Audio converted, samples:', audioData.length)
 
-      onProgress?.({
-        status: 'loading',
-        progress: 20,
-        message: 'Loading Whisper model (first run may take 1-2 minutes)...',
-      })
+  onProgress?.({
+    status: 'loading',
+    progress: 20,
+    message: 'Loading Whisper model (first run may take 1-2 minutes)...',
+  })
 
-      // Get the worker
-      const transcriptionWorker = getWorker()
-      console.log('[Transcription] Got worker instance:', transcriptionWorker)
+  // Get the worker
+  const transcriptionWorker = getWorker()
+  console.log('[Transcription] Got worker instance:', transcriptionWorker)
 
-      // Set up timeout to catch worker failures
-      let hasReceivedMessage = false
-      const workerTimeout = setTimeout(() => {
-        if (!hasReceivedMessage) {
-          console.error('[Transcription] Worker timeout - no response received')
+  return new Promise((resolve, reject) => {
+    // Set up timeout to catch worker failures
+    let hasReceivedMessage = false
+    const workerTimeout = setTimeout(() => {
+      if (!hasReceivedMessage) {
+        console.error('[Transcription] Worker timeout - no response received')
+        transcriptionWorker.removeEventListener('message', handleMessage)
+
+        onProgress?.({
+          status: 'error',
+          progress: 0,
+          message: 'Worker failed to respond. Please refresh and try again.',
+        })
+
+        reject(new Error('Worker failed to initialize. The worker may have crashed during startup.'))
+      }
+    }, 10000) // 10 second timeout
+
+    // Set up message handler
+    const handleMessage = (event: MessageEvent) => {
+      hasReceivedMessage = true
+      clearTimeout(workerTimeout)
+
+      const { status, file, progress, result, error, details } = event.data
+
+      switch (status) {
+        case 'initialized':
+          console.log('Worker initialized')
+          break
+
+        case 'initiate':
+          console.log('Starting to download:', file)
+          onProgress?.({
+            status: 'loading',
+            progress: 25,
+            message: `Downloading ${file}...`,
+          })
+          break
+
+        case 'progress': {
+          const percent = progress || 0
+          console.log(`Download progress for ${file}: ${percent.toFixed(1)}%`)
+          onProgress?.({
+            status: 'loading',
+            progress: 25 + (percent * 0.25), // 25-50%
+            message: `Downloading ${file}... ${percent.toFixed(1)}%`,
+          })
+          break
+        }
+
+        case 'done':
+          console.log('Downloaded:', file)
+          break
+
+        case 'ready':
+          console.log('Model ready, starting transcription...')
+          onProgress?.({
+            status: 'processing',
+            progress: 60,
+            message: 'Transcribing audio...',
+          })
+          break
+
+        case 'complete': {
+          console.log('Transcription complete!', result)
+          clearTimeout(workerTimeout)
           transcriptionWorker.removeEventListener('message', handleMessage)
-          
+
+          const endTime = performance.now()
+          const processingTimeMs = Math.round(endTime - startTime)
+
+          // Format the result
+          const text = result.text || ''
+          const segments: TranscriptionSegment[] = []
+
+          if (result.chunks && Array.isArray(result.chunks)) {
+            for (const chunk of result.chunks) {
+              segments.push({
+                start: chunk.timestamp[0] || 0,
+                end: chunk.timestamp[1] || 0,
+                text: chunk.text.trim(),
+              })
+            }
+          }
+
+          onProgress?.({
+            status: 'complete',
+            progress: 100,
+            message: 'Transcription complete!',
+          })
+
+          resolve({
+            text,
+            segments,
+            language: task.language || 'en',
+            processingTimeMs,
+          })
+          break
+        }
+
+        case 'error': {
+          console.error('Worker error:', error)
+          if (details) {
+            console.error('Error details:', details)
+          }
+          clearTimeout(workerTimeout)
+          transcriptionWorker.removeEventListener('message', handleMessage)
+
+          const errorMsg = error || 'Unknown worker error'
           onProgress?.({
             status: 'error',
             progress: 0,
-            message: 'Worker failed to respond. Please refresh and try again.',
+            message: `Failed: ${errorMsg}`,
           })
-          
-          reject(new Error('Worker failed to initialize. The worker may have crashed during startup.'))
-        }
-      }, 10000) // 10 second timeout
 
-      // Set up message handler
-      const handleMessage = (event: MessageEvent) => {
-        hasReceivedMessage = true
-        clearTimeout(workerTimeout)
-        
-        const { status, file, progress, result, error, details } = event.data
-
-        switch (status) {
-          case 'initialized':
-            console.log('Worker initialized')
-            break
-
-          case 'initiate':
-            console.log('Starting to download:', file)
-            onProgress?.({
-              status: 'loading',
-              progress: 25,
-              message: `Downloading ${file}...`,
-            })
-            break
-
-          case 'progress':
-            const percent = progress || 0
-            console.log(`Download progress for ${file}: ${percent.toFixed(1)}%`)
-            onProgress?.({
-              status: 'loading',
-              progress: 25 + (percent * 0.25), // 25-50%
-              message: `Downloading ${file}... ${percent.toFixed(1)}%`,
-            })
-            break
-
-          case 'done':
-            console.log('Downloaded:', file)
-            break
-
-          case 'ready':
-            console.log('Model ready, starting transcription...')
-            onProgress?.({
-              status: 'processing',
-              progress: 60,
-              message: 'Transcribing audio...',
-            })
-            break
-
-          case 'complete':
-            console.log('Transcription complete!', result)
-            clearTimeout(workerTimeout)
-            transcriptionWorker.removeEventListener('message', handleMessage)
-            
-            const endTime = performance.now()
-            const processingTimeMs = Math.round(endTime - startTime)
-            
-            // Format the result
-            const text = result.text || ''
-            const segments: TranscriptionSegment[] = []
-            
-            if (result.chunks && Array.isArray(result.chunks)) {
-              for (const chunk of result.chunks) {
-                segments.push({
-                  start: chunk.timestamp[0] || 0,
-                  end: chunk.timestamp[1] || 0,
-                  text: chunk.text.trim(),
-                })
-              }
-            }
-
-            onProgress?.({
-              status: 'complete',
-              progress: 100,
-              message: 'Transcription complete!',
-            })
-
-            resolve({
-              text,
-              segments,
-              language: task.language || 'en',
-              processingTimeMs,
-            })
-            break
-
-          case 'error':
-            console.error('Worker error:', error)
-            if (details) {
-              console.error('Error details:', details)
-            }
-            clearTimeout(workerTimeout)
-            transcriptionWorker.removeEventListener('message', handleMessage)
-            
-            const errorMsg = error || 'Unknown worker error'
-            onProgress?.({
-              status: 'error',
-              progress: 0,
-              message: `Failed: ${errorMsg}`,
-            })
-            
-            reject(new Error(errorMsg))
-            break
+          reject(new Error(errorMsg))
+          break
         }
       }
-
-      // Add event listener
-      transcriptionWorker.addEventListener('message', handleMessage)
-
-      // Send transcription request to worker
-      console.log('[Transcription] Posting message to worker with audio data length:', audioData.length)
-      transcriptionWorker.postMessage({
-        type: 'transcribe',
-        audioData,
-        modelName: task.modelName,
-        language: task.language,
-      })
-      console.log('[Transcription] Message posted to worker successfully')
-
-    } catch (error) {
-      console.error('=== TRANSCRIPTION ERROR ===')
-      console.error('Error:', error)
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      onProgress?.({
-        status: 'error',
-        progress: 0,
-        message: `Transcription failed: ${errorMessage}`,
-      })
-      reject(error)
     }
+
+    // Add event listener
+    transcriptionWorker.addEventListener('message', handleMessage)
+
+    // Send transcription request to worker
+    console.log('[Transcription] Posting message to worker with audio data length:', audioData.length)
+    transcriptionWorker.postMessage({
+      type: 'transcribe',
+      audioData,
+      modelName: task.modelName,
+      language: task.language,
+    })
+    console.log('[Transcription] Message posted to worker successfully')
   })
 }
 
@@ -278,7 +267,7 @@ export async function transcribePCM(
         const { status, file, progress, result, error } = event.data
 
         switch (status) {
-          case 'progress':
+          case 'progress': {
             const percent = progress || 0
             onProgress?.({
               status: 'loading',
@@ -286,6 +275,7 @@ export async function transcribePCM(
               message: `Downloading ${file}... ${percent.toFixed(1)}%`,
             })
             break
+          }
 
           case 'ready':
             onProgress?.({
@@ -295,16 +285,16 @@ export async function transcribePCM(
             })
             break
 
-          case 'complete':
+          case 'complete': {
             clearTimeout(workerTimeout)
             transcriptionWorker.removeEventListener('message', handleMessage)
-            
+
             const endTime = performance.now()
             const processingTimeMs = Math.round(endTime - startTime)
-            
+
             const text = result.text || ''
             const segments: TranscriptionSegment[] = []
-            
+
             if (result.chunks && Array.isArray(result.chunks)) {
               for (const chunk of result.chunks) {
                 segments.push({
@@ -328,6 +318,7 @@ export async function transcribePCM(
               processingTimeMs,
             })
             break
+          }
 
           case 'error':
             clearTimeout(workerTimeout)
@@ -354,6 +345,7 @@ export async function transcribePCM(
   })
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function isTranscriptionReady(_modelName: string): Promise<boolean> {
   // Models are downloaded on-demand, so always return true
   return true

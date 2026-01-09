@@ -42,10 +42,10 @@ export function DialogTrigger({
 }) {
   const { onOpenChange } = useDialog()
 
-  if (asChild && React.isValidElement(children)) {
+  if (asChild && React.isValidElement<{ onClick?: () => void }>(children)) {
     return React.cloneElement(children, {
       onClick: () => onOpenChange(true),
-    } as any)
+    })
   }
 
   return (

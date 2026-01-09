@@ -32,7 +32,7 @@ export function hasSharedArrayBuffer(): boolean {
 
 export function getDeviceMemoryGB(): number {
   if (typeof navigator === 'undefined') return 4
-  // @ts-ignore - deviceMemory is non-standard
+  // @ts-expect-error - deviceMemory is non-standard
   return navigator.deviceMemory || 4
 }
 

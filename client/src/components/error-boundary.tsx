@@ -1,4 +1,4 @@
-import  { Component, ErrorInfo, ReactNode } from 'react'
+import  { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card'

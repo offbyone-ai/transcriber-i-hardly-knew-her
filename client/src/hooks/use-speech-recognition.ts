@@ -114,7 +114,7 @@ export function useSpeechRecognition(
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop()
-        } catch (e) {
+        } catch {
           // Ignore errors on cleanup
         }
       }
@@ -145,7 +145,7 @@ export function useSpeechRecognition(
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
-      } catch (e) {
+      } catch {
         // Ignore
       }
       recognitionRef.current = null
@@ -301,7 +301,7 @@ export function useSpeechRecognition(
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
-      } catch (e) {
+      } catch {
         // Ignore errors when stopping
       }
       recognitionRef.current = null
