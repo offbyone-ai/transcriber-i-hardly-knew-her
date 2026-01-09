@@ -22,10 +22,18 @@ export default defineConfig({
   ],
 
   // Run dev server before tests (unless PLAYWRIGHT_BASE_URL is set)
-  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
-    command: 'bun run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-  },
+  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : [
+    {
+      command: 'bun run dev:server',
+      url: 'http://localhost:3000/api',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+    },
+    {
+      command: 'bun run dev:client',
+      url: 'http://localhost:5173',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+    },
+  ],
 })
