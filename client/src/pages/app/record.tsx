@@ -10,7 +10,9 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card } from '@/components/ui/card'
 import { useSpeechRecognition, type TranscriptSegment } from '@/hooks/use-speech-recognition'
+import { useLiveWhisper } from '@/hooks/use-live-whisper'
 import { TranscriptionModePicker, MobileTranscriptionWarning } from '@/components/transcription-mode-picker'
+import { canUseLocalTranscription } from '@/lib/device-detection'
 import type { TranscriptionMode } from '@/lib/device-detection'
 import type { Subject, Recording, Transcription, TranscriptionSegment } from '@shared/types'
 
@@ -52,7 +54,9 @@ export default function RecordPage() {
   
   // Live transcription options (toggles instead of separate modes)
   const [liveTranscriptionEnabled, setLiveTranscriptionEnabled] = useState(false)
+  const [liveTranscriptionEngine, setLiveTranscriptionEngine] = useState<'browser' | 'whisper'>('browser')
   const [systemAudioEnabled, setSystemAudioEnabled] = useState(false)
+  const canUseWhisper = canUseLocalTranscription()
   const [selectedLanguage, setSelectedLanguage] = useState(() => {
     // Try to match browser language to our options
     const browserLang = navigator?.language || 'en-US'
@@ -124,7 +128,7 @@ export default function RecordPage() {
       }
       // Reset the no-speech warning timer
       startNoSpeechTimer()
-      
+
       if (isFinal && text.trim()) {
         const newSegment = {
           text: text.trim(),
@@ -150,6 +154,31 @@ export default function RecordPage() {
       }
       // IMPORTANT: We do NOT clear transcript segments here
       // The segments are preserved even if recognition fails
+    }
+  })
+
+  // Live Whisper transcription hook
+  const liveWhisper = useLiveWhisper({
+    chunkDuration: 5, // 5-second chunks for faster feedback
+    language: selectedLanguage.split('-')[0], // Use just the language code (e.g., 'en' from 'en-US')
+    onSegment: (segment) => {
+      // Add to transcript segments (newest first)
+      const newSegment = {
+        text: segment.text,
+        timestamp: segment.start,
+        isFinal: true
+      }
+      setTranscriptSegments(prev => {
+        const updated = [newSegment, ...prev]
+        transcriptSegmentsRef.current = updated
+        return updated
+      })
+      // Clear no speech warning
+      setNoSpeechWarning(false)
+    },
+    onError: (error) => {
+      console.error('[LiveWhisper] Error:', error)
+      setSpeechRecognitionError(error)
     }
   })
 
@@ -334,9 +363,15 @@ export default function RecordPage() {
       // Start MediaRecorder
       mediaRecorder.start(1000) // Collect data every second
       
-      // Start speech recognition if enabled
+      // Start live transcription if enabled
       if (liveTranscriptionEnabled) {
-        speechRecognition.start()
+        if (liveTranscriptionEngine === 'whisper') {
+          // Start Whisper live transcription with the combined stream
+          liveWhisper.start(combinedStream)
+        } else {
+          // Start Web Speech API
+          speechRecognition.start()
+        }
         startNoSpeechTimer()
       }
       
@@ -384,9 +419,13 @@ export default function RecordPage() {
       noSpeechTimeoutRef.current = null
     }
     
-      // Stop speech recognition
+      // Stop live transcription
       if (liveTranscriptionEnabled) {
-        speechRecognition.stop()
+        if (liveTranscriptionEngine === 'whisper') {
+          liveWhisper.stop()
+        } else {
+          speechRecognition.stop()
+        }
       }
     
     // Now stop the MediaRecorder
@@ -417,13 +456,22 @@ export default function RecordPage() {
     if (isPaused) {
       mediaRecorderRef.current.resume()
       if (liveTranscriptionEnabled) {
-        speechRecognition.start()
+        if (liveTranscriptionEngine === 'whisper') {
+          // Whisper doesn't support pause/resume, but we can restart
+          // For now, just let it continue collecting audio
+        } else {
+          speechRecognition.start()
+        }
       }
       setIsPaused(false)
     } else {
       mediaRecorderRef.current.pause()
       if (liveTranscriptionEnabled) {
-        speechRecognition.stop()
+        if (liveTranscriptionEngine === 'whisper') {
+          // Whisper doesn't support pause/resume cleanly
+        } else {
+          speechRecognition.stop()
+        }
       }
       setIsPaused(true)
     }
@@ -779,21 +827,66 @@ export default function RecordPage() {
                       <Label htmlFor="live-transcription" className="text-sm sm:text-base cursor-pointer">
                         Live Transcription
                       </Label>
-                      {!speechRecognition.isSupported && (
-                        <span className="text-xs text-muted-foreground">(Not supported)</span>
-                      )}
                     </div>
                     <Checkbox
                       id="live-transcription"
                       checked={liveTranscriptionEnabled}
                       onCheckedChange={(checked) => setLiveTranscriptionEnabled(checked === true)}
-                      disabled={!speechRecognition.isSupported}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    See transcription in real-time as you speak. Uses browser speech recognition (fast but less accurate).
+                    See transcription in real-time as you speak.
                   </p>
                 </div>
+
+                {/* Live Transcription Engine Selection */}
+                {liveTranscriptionEnabled && (
+                  <div className="space-y-2 pl-4 border-l-2 border-primary/20">
+                    <Label className="text-sm">Engine</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setLiveTranscriptionEngine('browser')}
+                        disabled={!speechRecognition.isSupported}
+                        className={`p-3 rounded-lg border text-left transition-colors ${
+                          liveTranscriptionEngine === 'browser'
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:bg-accent'
+                        } ${!speechRecognition.isSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <div className="font-medium text-sm">Browser</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Fast, streaming
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLiveTranscriptionEngine('whisper')}
+                        disabled={!canUseWhisper}
+                        className={`p-3 rounded-lg border text-left transition-colors ${
+                          liveTranscriptionEngine === 'whisper'
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:bg-accent'
+                        } ${!canUseWhisper ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <div className="font-medium text-sm">Whisper</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Accurate, 5s delay
+                        </div>
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {liveTranscriptionEngine === 'browser'
+                        ? 'Uses browser speech recognition (fast but less accurate).'
+                        : 'Uses Whisper AI model locally (more accurate, 5-second chunks).'}
+                    </p>
+                    {liveTranscriptionEngine === 'whisper' && !canUseWhisper && (
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                        Whisper requires WebGPU support. Try Chrome or Edge.
+                      </p>
+                    )}
+                  </div>
+                )}
                 
                 {/* Language Selector (only shown when live transcription is enabled) */}
                 {liveTranscriptionEnabled && (
@@ -847,8 +940,12 @@ export default function RecordPage() {
               <div className="flex flex-wrap gap-2 justify-center text-xs">
                 {liveTranscriptionEnabled && (
                   <span className="px-2 py-1 bg-primary/10 text-primary rounded-full flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                    Live transcription
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      liveTranscriptionEngine === 'whisper' && liveWhisper.isProcessing
+                        ? 'bg-yellow-500 animate-pulse'
+                        : 'bg-green-500 animate-pulse'
+                    }`} />
+                    {liveTranscriptionEngine === 'whisper' ? 'Whisper live' : 'Browser live'}
                   </span>
                 )}
                 {systemAudioEnabled && (
@@ -957,12 +1054,29 @@ export default function RecordPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base sm:text-lg font-semibold">Live Transcription</h3>
-                    {speechRecognition.isListening && (
+                    {liveTranscriptionEngine === 'whisper' ? (
+                      <span className={`text-xs flex items-center gap-1 ${
+                        liveWhisper.isProcessing
+                          ? 'text-yellow-600 dark:text-yellow-400'
+                          : liveWhisper.isListening
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-muted-foreground'
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full ${
+                          liveWhisper.isProcessing
+                            ? 'bg-yellow-500 animate-pulse'
+                            : liveWhisper.isListening
+                              ? 'bg-green-500 animate-pulse'
+                              : 'bg-gray-400'
+                        }`} />
+                        {liveWhisper.isProcessing ? 'Processing...' : liveWhisper.isListening ? 'Listening' : 'Idle'}
+                      </span>
+                    ) : speechRecognition.isListening ? (
                       <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                         Listening
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   
                   {/* Speech recognition error */}
@@ -988,13 +1102,24 @@ export default function RecordPage() {
                     </div>
                   )}
                   
-                  {/* Interim text (currently being spoken) */}
-                  {interimText && (
-                    <div className="p-2 sm:p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                      <div className="text-xs sm:text-sm italic text-muted-foreground">
-                        {interimText}
+                  {/* Interim text (currently being spoken) or Whisper processing status */}
+                  {liveTranscriptionEngine === 'whisper' ? (
+                    liveWhisper.isProcessing && (
+                      <div className="p-2 sm:p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                        <div className="text-xs sm:text-sm italic text-yellow-700 dark:text-yellow-400 flex items-center gap-2">
+                          <span className="w-3 h-3 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                          Processing audio chunk...
+                        </div>
                       </div>
-                    </div>
+                    )
+                  ) : (
+                    interimText && (
+                      <div className="p-2 sm:p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                        <div className="text-xs sm:text-sm italic text-muted-foreground">
+                          {interimText}
+                        </div>
+                      </div>
+                    )
                   )}
                   
                   {/* Final transcript segments (newest first) */}
@@ -1017,7 +1142,9 @@ export default function RecordPage() {
                   )}
                   
                   <p className="text-xs text-muted-foreground">
-                    Live transcription uses your browser's speech recognition. A more accurate Whisper transcription will be available on the recording detail page.
+                    {liveTranscriptionEngine === 'whisper'
+                      ? 'Using Whisper AI for live transcription. Results appear every 5 seconds. You can still re-transcribe later for even better accuracy.'
+                      : 'Using browser speech recognition for fast live transcription. A more accurate Whisper transcription will be available on the recording detail page.'}
                   </p>
                 </div>
               </Card>
