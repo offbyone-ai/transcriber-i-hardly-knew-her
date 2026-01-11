@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { AlertCircle, Palette, Monitor, Fingerprint, Plus, Trash2 } from 'lucide-react'
-import { WHISPER_MODELS, type WhisperModel } from '@shared/types'
+import { AlertCircle, Palette, Monitor, Fingerprint, Plus, Trash2, Bot, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { WHISPER_MODELS, type WhisperModel, type AIProviderConfig, type AIProvider } from '@shared/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getPreferredModel, setPreferredModel } from '@/lib/model-manager'
@@ -8,6 +8,10 @@ import { useTheme, getAvailableThemes, themeModes } from '@/components/theme-pro
 import type { ThemePreset, ThemeMode } from '@/components/theme-provider'
 import { authClient } from '@/lib/auth-client'
 import { toast } from 'sonner'
+import { getAISettings, saveAISettings } from '@/lib/db'
+import { testAIConnection, PROVIDER_PRESETS } from '@/lib/ai-analysis'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function SettingsPage() {
   const [preferredModel, setPreferredModelState] = useState<WhisperModel>(getPreferredModel())
@@ -15,6 +19,15 @@ export default function SettingsPage() {
   const [passkeys, setPasskeys] = useState<Array<{ id: string; name?: string; createdAt?: Date }>>([])
   const { preset, mode, setPreset, setMode } = useTheme()
   const availableThemes = getAvailableThemes()
+
+  // AI Settings state
+  const [aiProvider, setAiProvider] = useState<AIProvider>('openai-compatible')
+  const [aiApiUrl, setAiApiUrl] = useState('')
+  const [aiApiKey, setAiApiKey] = useState('')
+  const [aiModel, setAiModel] = useState('')
+  const [aiTestStatus, setAiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+  const [aiTestError, setAiTestError] = useState<string>('')
+  const [aiSaving, setAiSaving] = useState(false)
 
   async function handleAddPasskey() {
     setPasskeyLoading(true)
@@ -47,6 +60,71 @@ export default function SettingsPage() {
   useEffect(() => {
     loadPasskeys()
   }, [])
+
+  // Load AI settings on mount
+  useEffect(() => {
+    async function loadAISettings() {
+      const config = await getAISettings()
+      if (config) {
+        setAiProvider(config.provider)
+        setAiApiUrl(config.apiUrl || '')
+        setAiApiKey(config.apiKey || '')
+        setAiModel(config.model || '')
+      }
+    }
+    loadAISettings()
+  }, [])
+
+  async function handleTestAIConnection() {
+    setAiTestStatus('testing')
+    setAiTestError('')
+
+    const config: AIProviderConfig = {
+      provider: aiProvider,
+      apiUrl: aiApiUrl,
+      apiKey: aiApiKey,
+      model: aiModel,
+    }
+
+    const result = await testAIConnection(config)
+    if (result.success) {
+      setAiTestStatus('success')
+    } else {
+      setAiTestStatus('error')
+      setAiTestError(result.error || 'Connection failed')
+    }
+  }
+
+  async function handleSaveAISettings() {
+    setAiSaving(true)
+    try {
+      const config: AIProviderConfig = {
+        provider: aiProvider,
+        apiUrl: aiApiUrl,
+        apiKey: aiApiKey,
+        model: aiModel,
+      }
+      await saveAISettings(config)
+      toast.success('AI settings saved')
+    } catch {
+      toast.error('Failed to save AI settings')
+    } finally {
+      setAiSaving(false)
+    }
+  }
+
+  function handleApplyPreset(presetName: 'openai' | 'ollama' | 'lmstudio') {
+    const presetConfig = PROVIDER_PRESETS[presetName]
+    setAiProvider(presetConfig.provider)
+    setAiApiUrl(presetConfig.apiUrl)
+    setAiModel(presetConfig.model)
+    if (presetName === 'openai') {
+      // Don't clear API key for OpenAI as user needs to provide it
+    } else {
+      setAiApiKey('') // Local endpoints don't need API key
+    }
+    setAiTestStatus('idle')
+  }
 
   function handleSetPreferredModel(modelName: WhisperModel) {
     setPreferredModel(modelName)
@@ -249,6 +327,170 @@ export default function SettingsPage() {
                   </p>
                   <p>
                     <strong>Tip:</strong> Add a passkey on each device you use for the fastest sign-in experience.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Analysis Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bot size={20} className="text-primary" />
+              <CardTitle>AI Analysis</CardTitle>
+            </div>
+            <CardDescription>
+              Configure AI-powered analysis for your transcriptions. Extract summaries, action items, topics, and key points.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Quick Setup Presets */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Quick Setup</h3>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleApplyPreset('ollama')}
+                  className="text-xs"
+                >
+                  Ollama (Local)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleApplyPreset('lmstudio')}
+                  className="text-xs"
+                >
+                  LM Studio
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleApplyPreset('openai')}
+                  className="text-xs"
+                >
+                  OpenAI
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Click a preset to auto-fill settings for common providers
+              </p>
+            </div>
+
+            {/* Provider Configuration */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ai-api-url">API URL</Label>
+                <Input
+                  id="ai-api-url"
+                  placeholder="https://api.openai.com/v1"
+                  value={aiApiUrl}
+                  onChange={(e) => {
+                    setAiApiUrl(e.target.value)
+                    setAiTestStatus('idle')
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  OpenAI-compatible endpoint (e.g., http://localhost:11434/v1 for Ollama)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ai-api-key">API Key (optional for local)</Label>
+                <Input
+                  id="ai-api-key"
+                  type="password"
+                  placeholder="sk-..."
+                  value={aiApiKey}
+                  onChange={(e) => {
+                    setAiApiKey(e.target.value)
+                    setAiTestStatus('idle')
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Required for OpenAI, optional for local endpoints like Ollama
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ai-model">Model Name</Label>
+                <Input
+                  id="ai-model"
+                  placeholder="gpt-4o-mini"
+                  value={aiModel}
+                  onChange={(e) => {
+                    setAiModel(e.target.value)
+                    setAiTestStatus('idle')
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Examples: gpt-4o-mini, llama3.2, mistral, phi3
+                </p>
+              </div>
+            </div>
+
+            {/* Test & Save */}
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleTestAIConnection}
+                  disabled={aiTestStatus === 'testing' || !aiApiUrl || !aiModel}
+                  className="flex-1"
+                >
+                  {aiTestStatus === 'testing' ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Testing...
+                    </>
+                  ) : (
+                    'Test Connection'
+                  )}
+                </Button>
+                <Button
+                  onClick={handleSaveAISettings}
+                  disabled={aiSaving || !aiApiUrl || !aiModel}
+                  className="flex-1"
+                >
+                  {aiSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Settings'
+                  )}
+                </Button>
+              </div>
+
+              {/* Test Status */}
+              {aiTestStatus === 'success' && (
+                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                  <CheckCircle size={16} />
+                  Connection successful!
+                </div>
+              )}
+              {aiTestStatus === 'error' && (
+                <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400">
+                  <XCircle size={16} className="mt-0.5 shrink-0" />
+                  <span>{aiTestError}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Help Info */}
+            <div className="p-3 bg-accent rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>
+                    <strong>Local LLMs:</strong> For privacy-first analysis, use Ollama or LM Studio running locally. Your data never leaves your device.
+                  </p>
+                  <p>
+                    <strong>Cloud APIs:</strong> OpenAI and other cloud providers offer faster analysis with more powerful models.
                   </p>
                 </div>
               </div>

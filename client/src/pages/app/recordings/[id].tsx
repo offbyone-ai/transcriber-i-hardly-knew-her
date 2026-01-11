@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X, AlertTriangle, Smartphone, Cloud, HardDrive, Zap, Cpu, ChevronDown, ChevronUp, FileText, FileDown } from 'lucide-react'
+import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X, AlertTriangle, Smartphone, Cloud, HardDrive, Zap, Cpu, ChevronDown, ChevronUp, FileText, FileDown, Sparkles, ListChecks, Tags, MessageSquare, Settings2 } from 'lucide-react'
 import { db, deleteRecording, addTranscription, updateRecordingSubject, updateRecordingTitle, fixRecordingDuration } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -12,7 +12,9 @@ import { transcribeOnServer, getServerTranscriptionStatus, type UsageInfo } from
 import { isMobileDevice, canUseLocalTranscription, getWebGPUInfo, type TranscriptionMode } from '@/lib/device-detection'
 import { convertAudioForWhisper } from '@/lib/audio-processing'
 import { exportTranscription, EXPORT_FORMATS, type ExportFormat } from '@/lib/export'
-import type { Recording, Transcription, Subject } from '@shared/types'
+import { analyzeTranscription, getAnalysis, isAIConfigured, type AnalysisProgress } from '@/lib/ai-analysis'
+import { getAnalysisByTranscriptionId } from '@/lib/db'
+import type { Recording, Transcription, Subject, TranscriptionAnalysis } from '@shared/types'
 
 // Check available memory (returns estimated MB available, or null if not supported)
 function getAvailableMemoryMB(): number | null {
@@ -51,6 +53,12 @@ export default function RecordingDetailPage() {
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const exportMenuRef = useRef<HTMLDivElement>(null)
+
+  // AI Analysis state
+  const [analysis, setAnalysis] = useState<TranscriptionAnalysis | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null)
+  const [aiConfigured, setAiConfigured] = useState(false)
   
   // Transcription mode state
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>(() => {
@@ -67,7 +75,8 @@ export default function RecordingDetailPage() {
     loadRecordingData()
     loadSubjects()
     checkServerStatus()
-    
+    checkAIConfig()
+
     return () => {
       // Cleanup audio URL
       if (audioUrl) {
@@ -75,6 +84,22 @@ export default function RecordingDetailPage() {
       }
     }
   }, [id])
+
+  async function checkAIConfig() {
+    const configured = await isAIConfigured()
+    setAiConfigured(configured)
+  }
+
+  async function loadAnalysis(transcriptionId: string) {
+    try {
+      const existingAnalysis = await getAnalysisByTranscriptionId(transcriptionId)
+      if (existingAnalysis) {
+        setAnalysis(existingAnalysis)
+      }
+    } catch (error) {
+      console.error('Failed to load analysis:', error)
+    }
+  }
   
   async function checkServerStatus() {
     // Fetch server status and WebGPU info in parallel
@@ -133,6 +158,11 @@ export default function RecordingDetailPage() {
         .equals(id)
         .first()
       setTranscription(transcriptionData || null)
+
+      // Load analysis if transcription exists
+      if (transcriptionData) {
+        await loadAnalysis(transcriptionData.id)
+      }
     } catch (error) {
       console.error('Failed to load recording:', error)
     } finally {
@@ -461,6 +491,38 @@ export default function RecordingDetailPage() {
     } finally {
       setIsExporting(false)
       setShowExportMenu(false)
+    }
+  }
+
+  async function handleAnalyze() {
+    if (!transcription || !session?.user?.id) return
+
+    setIsAnalyzing(true)
+    setAnalysisProgress(null)
+
+    try {
+      const result = await analyzeTranscription(
+        transcription,
+        session.user.id,
+        (progress) => setAnalysisProgress(progress)
+      )
+
+      if (result) {
+        setAnalysis(result)
+        showAlert({
+          title: 'Analysis Complete',
+          description: 'AI analysis has been generated for this transcription.'
+        })
+      }
+    } catch (error) {
+      console.error('Analysis failed:', error)
+      showAlert({
+        title: 'Analysis Failed',
+        description: error instanceof Error ? error.message : 'Unknown error'
+      })
+    } finally {
+      setIsAnalyzing(false)
+      setAnalysisProgress(null)
     }
   }
 
@@ -902,6 +964,159 @@ export default function RecordingDetailPage() {
             </div>
           )}
         </Card>
+
+        {/* AI Analysis Section - Only show if there's a transcription */}
+        {transcription && (
+          <Card className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles size={20} className="text-purple-500" />
+                <h2 className="text-lg sm:text-xl font-semibold">AI Analysis</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                {!aiConfigured && (
+                  <Link to="/app/settings" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    <Settings2 size={14} />
+                    Configure AI
+                  </Link>
+                )}
+                <Button
+                  variant={analysis ? 'outline' : 'default'}
+                  size="sm"
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing || !aiConfigured}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin mr-1" />
+                      Analyzing...
+                    </>
+                  ) : analysis ? (
+                    <>
+                      <RotateCcw size={16} className="mr-1" />
+                      Re-analyze
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} className="mr-1" />
+                      Analyze
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Analysis progress */}
+            {isAnalyzing && analysisProgress && (
+              <div className="mb-6">
+                <div className="h-2 bg-accent rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-purple-500 transition-all"
+                    style={{ width: `${analysisProgress.progress}%` }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {analysisProgress.stage || 'Processing...'}
+                </p>
+              </div>
+            )}
+
+            {!aiConfigured && !analysis && (
+              <div className="text-center py-6 text-muted-foreground">
+                <p className="mb-2">AI analysis is not configured.</p>
+                <Link to="/app/settings" className="text-primary hover:underline">
+                  Configure AI settings
+                </Link>
+              </div>
+            )}
+
+            {aiConfigured && !analysis && !isAnalyzing && (
+              <div className="text-center py-6 text-muted-foreground">
+                <p>Click "Analyze" to generate a summary, extract action items, and identify topics.</p>
+              </div>
+            )}
+
+            {analysis && (
+              <div className="space-y-6">
+                {/* Summary */}
+                {analysis.summary && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <MessageSquare size={16} className="text-muted-foreground" />
+                      <h3 className="text-sm font-semibold">Summary</h3>
+                    </div>
+                    <p className="text-sm text-foreground bg-muted/50 rounded-lg p-3">
+                      {analysis.summary}
+                    </p>
+                  </div>
+                )}
+
+                {/* Action Items */}
+                {analysis.actionItems && analysis.actionItems.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <ListChecks size={16} className="text-muted-foreground" />
+                      <h3 className="text-sm font-semibold">Action Items</h3>
+                    </div>
+                    <ul className="space-y-1">
+                      {analysis.actionItems.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm">
+                          <span className="text-purple-500 mt-1">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Topics */}
+                {analysis.topics && analysis.topics.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Tags size={16} className="text-muted-foreground" />
+                      <h3 className="text-sm font-semibold">Topics</h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {analysis.topics.map((topic, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs"
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Key Points */}
+                {analysis.keyPoints && analysis.keyPoints.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText size={16} className="text-muted-foreground" />
+                      <h3 className="text-sm font-semibold">Key Points</h3>
+                    </div>
+                    <ul className="space-y-1">
+                      {analysis.keyPoints.map((point, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm">
+                          <span className="text-blue-500 mt-1">→</span>
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Metadata */}
+                <div className="pt-4 border-t border-border">
+                  <p className="text-xs text-muted-foreground">
+                    Analyzed with {analysis.model} ({analysis.provider}) on {new Date(analysis.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
       </div>
     </div>
   )

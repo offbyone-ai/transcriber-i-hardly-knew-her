@@ -72,6 +72,35 @@ export type Transcription = {
   userId: string
 }
 
+// AI Analysis types
+export type AIProvider = 'local' | 'openai-compatible'
+
+export type AIProviderConfig = {
+  provider: AIProvider
+  // For openai-compatible
+  apiUrl?: string      // e.g., https://api.openai.com/v1 or http://localhost:11434/v1
+  apiKey?: string
+  model?: string
+  // For local
+  localModel?: string  // e.g., 'Llama-3.2-1B-Instruct-q4f16_1-MLC'
+}
+
+export type TranscriptionAnalysis = {
+  id: string
+  transcriptionId: string
+  summary?: string
+  actionItems?: string[]
+  topics?: string[]
+  keyPoints?: string[]
+  sentiment?: 'positive' | 'neutral' | 'negative' | 'mixed'
+  createdAt: Date
+  provider: AIProvider
+  model: string
+  userId: string
+}
+
+export type AnalysisType = 'summary' | 'actionItems' | 'topics' | 'keyPoints' | 'all'
+
 // Whisper model types
 export type WhisperModel = 'tiny' | 'tiny.en' | 'base' | 'base.en' | 'small' | 'small.en'
 

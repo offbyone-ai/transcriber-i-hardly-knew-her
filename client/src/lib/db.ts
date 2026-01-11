@@ -1,10 +1,11 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Subject, Recording, Transcription, WhisperModel } from '@shared/types'
+import type { Subject, Recording, Transcription, WhisperModel, TranscriptionAnalysis, AIProviderConfig } from '@shared/types'
 
 // Extend types for Dexie
 type DexieSubject = Omit<Subject, 'audioBlob'>
 type DexieRecording = Omit<Recording, 'audioBlob'> & { audioBlob: Blob }
 type DexieTranscription = Transcription
+type DexieAnalysis = TranscriptionAnalysis
 
 // Model storage type
 type ModelData = {
@@ -13,11 +14,20 @@ type ModelData = {
   downloadedAt: Date
 }
 
+// AI settings storage type
+type AISettings = {
+  id: 'ai-config'  // singleton key
+  config: AIProviderConfig
+  updatedAt: Date
+}
+
 class TranscriberDB extends Dexie {
   subjects!: EntityTable<DexieSubject, 'id'>
   recordings!: EntityTable<DexieRecording, 'id'>
   transcriptions!: EntityTable<DexieTranscription, 'id'>
   models!: EntityTable<ModelData, 'name'>
+  analyses!: EntityTable<DexieAnalysis, 'id'>
+  aiSettings!: EntityTable<AISettings, 'id'>
 
   constructor() {
     super('TranscriberDB')
@@ -61,9 +71,9 @@ class TranscriberDB extends Dexie {
       // Get all recordings with missing or zero duration
       const recordings = await tx.table('recordings').toArray()
       const recordingsToFix = recordings.filter(r => !r.duration || r.duration === 0)
-      
+
       console.log(`[DB Migration v4] Found ${recordingsToFix.length} recordings to fix duration`)
-      
+
       // Fix each recording's duration by reading audio metadata
       for (const recording of recordingsToFix) {
         try {
@@ -74,6 +84,16 @@ class TranscriberDB extends Dexie {
           console.error(`[DB Migration v4] Failed to fix duration for recording ${recording.id}:`, error)
         }
       }
+    })
+
+    // Version 5: Add AI analysis tables
+    this.version(5).stores({
+      subjects: 'id, userId, name, createdAt',
+      recordings: 'id, subjectId, userId, createdAt, title, source',
+      transcriptions: 'id, recordingId, userId',
+      models: 'name, downloadedAt',
+      analyses: 'id, transcriptionId, userId, createdAt',
+      aiSettings: 'id',
     })
   }
 }
@@ -219,9 +239,9 @@ export async function fixRecordingDuration(recordingId: string): Promise<number>
 export async function fixAllRecordingDurations(): Promise<number> {
   const recordings = await db.recordings.toArray()
   const recordingsToFix = recordings.filter(r => !r.duration || r.duration === 0)
-  
+
   console.log(`[Fix Durations] Found ${recordingsToFix.length} recordings to fix`)
-  
+
   let fixed = 0
   for (const recording of recordingsToFix) {
     try {
@@ -233,7 +253,41 @@ export async function fixAllRecordingDurations(): Promise<number> {
       console.error(`[Fix Durations] Failed to fix recording ${recording.id}:`, error)
     }
   }
-  
+
   console.log(`[Fix Durations] Successfully fixed ${fixed}/${recordingsToFix.length} recordings`)
   return fixed
+}
+
+// AI Analysis functions
+export async function addAnalysis(analysis: TranscriptionAnalysis) {
+  return await db.analyses.add(analysis)
+}
+
+export async function getAnalysisByTranscriptionId(transcriptionId: string) {
+  return await db.analyses
+    .where('transcriptionId')
+    .equals(transcriptionId)
+    .first()
+}
+
+export async function updateAnalysis(id: string, updates: Partial<TranscriptionAnalysis>) {
+  return await db.analyses.update(id, updates)
+}
+
+export async function deleteAnalysis(id: string) {
+  return await db.analyses.delete(id)
+}
+
+// AI Settings functions
+export async function getAISettings(): Promise<AIProviderConfig | null> {
+  const settings = await db.aiSettings.get('ai-config')
+  return settings?.config ?? null
+}
+
+export async function saveAISettings(config: AIProviderConfig) {
+  return await db.aiSettings.put({
+    id: 'ai-config',
+    config,
+    updatedAt: new Date(),
+  })
 }
