@@ -4,6 +4,13 @@
 import type { AIProvider, AIProviderConfig, TranscriptionAnalysis, Transcription } from '@shared/types'
 import { getAISettings, addAnalysis, getAnalysisByTranscriptionId, updateAnalysis } from './db'
 import { runFullAnalysis as runOpenAIAnalysis, testConnection as testOpenAIConnection, type AnalysisResult } from './ai-providers/openai-compat'
+import {
+  runFullAnalysis as runLocalAnalysis,
+  testConnection as testLocalConnection,
+  isWebGPUSupported,
+  LOCAL_MODELS,
+  type ModelDownloadProgress,
+} from './ai-providers/local-webllm'
 
 export type AnalysisProgress = {
   status: 'initializing' | 'analyzing' | 'complete' | 'error'
@@ -53,8 +60,10 @@ export async function testAIConnection(config: AIProviderConfig): Promise<{ succ
   }
 
   if (config.provider === 'local') {
-    // TODO: Implement local LLM connection test
-    return { success: false, error: 'Local LLM not yet implemented' }
+    if (!config.localModel) {
+      return { success: false, error: 'Local model is required' }
+    }
+    return await testLocalConnection(config.localModel)
   }
 
   return { success: false, error: 'Unknown provider' }
@@ -97,8 +106,27 @@ export async function analyzeTranscription(
         }
       )
     } else if (config.provider === 'local') {
-      // TODO: Implement local LLM analysis
-      throw new Error('Local LLM analysis not yet implemented')
+      if (!config.localModel) {
+        throw new Error('Local provider requires a model selection')
+      }
+
+      result = await runLocalAnalysis(
+        config.localModel,
+        transcription.text,
+        (stage) => {
+          onProgress?.({ status: 'analyzing', progress: 30, stage })
+        },
+        (modelProgress) => {
+          // Show model download progress
+          if (modelProgress.progress < 100) {
+            onProgress?.({
+              status: 'initializing',
+              progress: Math.round(modelProgress.progress * 0.2), // 0-20% for model loading
+              stage: modelProgress.text,
+            })
+          }
+        }
+      )
     } else {
       throw new Error('Unknown AI provider')
     }
@@ -189,3 +217,7 @@ export const PROVIDER_PRESETS = {
     model: 'local-model',
   },
 }
+
+// Re-export local model utilities
+export { LOCAL_MODELS, isWebGPUSupported }
+export type { ModelDownloadProgress }

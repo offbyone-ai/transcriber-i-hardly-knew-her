@@ -9,9 +9,10 @@ import type { ThemePreset, ThemeMode } from '@/components/theme-provider'
 import { authClient } from '@/lib/auth-client'
 import { toast } from 'sonner'
 import { getAISettings, saveAISettings } from '@/lib/db'
-import { testAIConnection, PROVIDER_PRESETS } from '@/lib/ai-analysis'
+import { testAIConnection, PROVIDER_PRESETS, LOCAL_MODELS, isWebGPUSupported } from '@/lib/ai-analysis'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Cpu, Cloud } from 'lucide-react'
 
 export default function SettingsPage() {
   const [preferredModel, setPreferredModelState] = useState<WhisperModel>(getPreferredModel())
@@ -25,9 +26,11 @@ export default function SettingsPage() {
   const [aiApiUrl, setAiApiUrl] = useState('')
   const [aiApiKey, setAiApiKey] = useState('')
   const [aiModel, setAiModel] = useState('')
+  const [aiLocalModel, setAiLocalModel] = useState<string>(LOCAL_MODELS[0].id)
   const [aiTestStatus, setAiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
   const [aiTestError, setAiTestError] = useState<string>('')
   const [aiSaving, setAiSaving] = useState(false)
+  const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(null)
 
   async function handleAddPasskey() {
     setPasskeyLoading(true)
@@ -70,7 +73,11 @@ export default function SettingsPage() {
         setAiApiUrl(config.apiUrl || '')
         setAiApiKey(config.apiKey || '')
         setAiModel(config.model || '')
+        setAiLocalModel(config.localModel || LOCAL_MODELS[0].id)
       }
+      // Check WebGPU support
+      const supported = await isWebGPUSupported()
+      setWebGPUSupported(supported)
     }
     loadAISettings()
   }, [])
@@ -84,6 +91,7 @@ export default function SettingsPage() {
       apiUrl: aiApiUrl,
       apiKey: aiApiKey,
       model: aiModel,
+      localModel: aiLocalModel,
     }
 
     const result = await testAIConnection(config)
@@ -103,6 +111,7 @@ export default function SettingsPage() {
         apiUrl: aiApiUrl,
         apiKey: aiApiKey,
         model: aiModel,
+        localModel: aiLocalModel,
       }
       await saveAISettings(config)
       toast.success('AI settings saved')
@@ -346,91 +355,199 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Quick Setup Presets */}
+            {/* Provider Type Selection */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Quick Setup</h3>
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleApplyPreset('ollama')}
-                  className="text-xs"
+              <h3 className="text-sm font-semibold">Provider Type</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setAiProvider('local')
+                    setAiTestStatus('idle')
+                  }}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border transition-colors ${
+                    aiProvider === 'local'
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-border hover:bg-accent text-muted-foreground'
+                  }`}
                 >
-                  Ollama (Local)
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleApplyPreset('lmstudio')}
-                  className="text-xs"
+                  <Cpu size={18} />
+                  <div className="text-left">
+                    <div className="text-sm font-medium">In-Browser</div>
+                    <div className="text-xs opacity-70">Uses WebGPU</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setAiProvider('openai-compatible')
+                    setAiTestStatus('idle')
+                  }}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border transition-colors ${
+                    aiProvider === 'openai-compatible'
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-border hover:bg-accent text-muted-foreground'
+                  }`}
                 >
-                  LM Studio
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleApplyPreset('openai')}
-                  className="text-xs"
-                >
-                  OpenAI
-                </Button>
+                  <Cloud size={18} />
+                  <div className="text-left">
+                    <div className="text-sm font-medium">API</div>
+                    <div className="text-xs opacity-70">OpenAI-compatible</div>
+                  </div>
+                </button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Click a preset to auto-fill settings for common providers
-              </p>
             </div>
 
-            {/* Provider Configuration */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="ai-api-url">API URL</Label>
-                <Input
-                  id="ai-api-url"
-                  placeholder="https://api.openai.com/v1"
-                  value={aiApiUrl}
-                  onChange={(e) => {
-                    setAiApiUrl(e.target.value)
-                    setAiTestStatus('idle')
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  OpenAI-compatible endpoint (e.g., http://localhost:11434/v1 for Ollama)
-                </p>
-              </div>
+            {/* Local Provider Configuration */}
+            {aiProvider === 'local' && (
+              <div className="space-y-4">
+                {webGPUSupported === false && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
+                      <XCircle size={16} className="mt-0.5 shrink-0" />
+                      <span>WebGPU is not supported in this browser. Try Chrome or Edge for in-browser AI.</span>
+                    </div>
+                  </div>
+                )}
 
-              <div className="space-y-2">
-                <Label htmlFor="ai-api-key">API Key (optional for local)</Label>
-                <Input
-                  id="ai-api-key"
-                  type="password"
-                  placeholder="sk-..."
-                  value={aiApiKey}
-                  onChange={(e) => {
-                    setAiApiKey(e.target.value)
-                    setAiTestStatus('idle')
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Required for OpenAI, optional for local endpoints like Ollama
-                </p>
-              </div>
+                <div className="space-y-3">
+                  <Label>Select Model</Label>
+                  {LOCAL_MODELS.map((model) => {
+                    const isSelected = aiLocalModel === model.id
+                    return (
+                      <label
+                        key={model.id}
+                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                          isSelected
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:bg-accent'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="local-model"
+                          checked={isSelected}
+                          onChange={() => {
+                            setAiLocalModel(model.id)
+                            setAiTestStatus('idle')
+                          }}
+                          className="mt-0.5 w-4 h-4 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm">{model.name}</span>
+                            <span className="text-xs text-muted-foreground">{model.size}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {model.description}
+                          </p>
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="ai-model">Model Name</Label>
-                <Input
-                  id="ai-model"
-                  placeholder="gpt-4o-mini"
-                  value={aiModel}
-                  onChange={(e) => {
-                    setAiModel(e.target.value)
-                    setAiTestStatus('idle')
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Examples: gpt-4o-mini, llama3.2, mistral, phi3
-                </p>
+                <div className="p-3 bg-accent rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>
+                        <strong>Privacy:</strong> Models run entirely in your browser. Your data never leaves your device.
+                      </p>
+                      <p>
+                        <strong>First use:</strong> The model will be downloaded and cached (may take a few minutes).
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* OpenAI-Compatible Provider Configuration */}
+            {aiProvider === 'openai-compatible' && (
+              <>
+                {/* Quick Setup Presets */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">Quick Setup</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleApplyPreset('ollama')}
+                      className="text-xs"
+                    >
+                      Ollama
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleApplyPreset('lmstudio')}
+                      className="text-xs"
+                    >
+                      LM Studio
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleApplyPreset('openai')}
+                      className="text-xs"
+                    >
+                      OpenAI
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Provider Configuration */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="ai-api-url">API URL</Label>
+                    <Input
+                      id="ai-api-url"
+                      placeholder="https://api.openai.com/v1"
+                      value={aiApiUrl}
+                      onChange={(e) => {
+                        setAiApiUrl(e.target.value)
+                        setAiTestStatus('idle')
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      OpenAI-compatible endpoint (e.g., http://localhost:11434/v1 for Ollama)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="ai-api-key">API Key (optional for local)</Label>
+                    <Input
+                      id="ai-api-key"
+                      type="password"
+                      placeholder="sk-..."
+                      value={aiApiKey}
+                      onChange={(e) => {
+                        setAiApiKey(e.target.value)
+                        setAiTestStatus('idle')
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Required for OpenAI, optional for local endpoints like Ollama
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="ai-model">Model Name</Label>
+                    <Input
+                      id="ai-model"
+                      placeholder="gpt-4o-mini"
+                      value={aiModel}
+                      onChange={(e) => {
+                        setAiModel(e.target.value)
+                        setAiTestStatus('idle')
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Examples: gpt-4o-mini, llama3.2, mistral, phi3
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Test & Save */}
             <div className="flex flex-col gap-3">
@@ -438,21 +555,29 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   onClick={handleTestAIConnection}
-                  disabled={aiTestStatus === 'testing' || !aiApiUrl || !aiModel}
+                  disabled={
+                    aiTestStatus === 'testing' ||
+                    (aiProvider === 'openai-compatible' && (!aiApiUrl || !aiModel)) ||
+                    (aiProvider === 'local' && !aiLocalModel)
+                  }
                   className="flex-1"
                 >
                   {aiTestStatus === 'testing' ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Testing...
+                      {aiProvider === 'local' ? 'Loading Model...' : 'Testing...'}
                     </>
                   ) : (
-                    'Test Connection'
+                    aiProvider === 'local' ? 'Test Model' : 'Test Connection'
                   )}
                 </Button>
                 <Button
                   onClick={handleSaveAISettings}
-                  disabled={aiSaving || !aiApiUrl || !aiModel}
+                  disabled={
+                    aiSaving ||
+                    (aiProvider === 'openai-compatible' && (!aiApiUrl || !aiModel)) ||
+                    (aiProvider === 'local' && !aiLocalModel)
+                  }
                   className="flex-1"
                 >
                   {aiSaving ? (
@@ -470,7 +595,7 @@ export default function SettingsPage() {
               {aiTestStatus === 'success' && (
                 <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
                   <CheckCircle size={16} />
-                  Connection successful!
+                  {aiProvider === 'local' ? 'Model loaded successfully!' : 'Connection successful!'}
                 </div>
               )}
               {aiTestStatus === 'error' && (
@@ -479,21 +604,6 @@ export default function SettingsPage() {
                   <span>{aiTestError}</span>
                 </div>
               )}
-            </div>
-
-            {/* Help Info */}
-            <div className="p-3 bg-accent rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertCircle size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>
-                    <strong>Local LLMs:</strong> For privacy-first analysis, use Ollama or LM Studio running locally. Your data never leaves your device.
-                  </p>
-                  <p>
-                    <strong>Cloud APIs:</strong> OpenAI and other cloud providers offer faster analysis with more powerful models.
-                  </p>
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>
