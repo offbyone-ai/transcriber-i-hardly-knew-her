@@ -52,12 +52,26 @@ export type Recording = {
   userId: string
 }
 
+// Speaker diarization types
+export type SpeakerLabel = {
+  id: string           // e.g., "speaker-1", "speaker-2"
+  name?: string        // User-defined name: "John", "Interviewer", etc.
+  color?: string       // Display color for UI
+}
+
+export type SpeakerSegment = {
+  speakerId: string    // References SpeakerLabel.id
+  start: number        // Start time in seconds
+  end: number          // End time in seconds
+}
+
 // Transcription types
 export type TranscriptionSegment = {
   start: number // timestamp in seconds
   end: number
   text: string
   confidence?: number
+  speakerId?: string   // Speaker ID if diarization was performed
 }
 
 export type Transcription = {
@@ -70,6 +84,9 @@ export type Transcription = {
   processingTimeMs?: number // time taken to transcribe in milliseconds
   createdAt: Date
   userId: string
+  // Speaker diarization
+  speakerLabels?: SpeakerLabel[]
+  hasSpeakerDiarization?: boolean
 }
 
 // AI Analysis types

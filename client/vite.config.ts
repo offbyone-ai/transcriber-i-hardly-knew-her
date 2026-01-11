@@ -16,6 +16,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         // Don't precache the large ML model files
         globIgnores: ['**/onnx/**', '**/whisper/**'],
+        // Allow larger files for WebLLM and Whisper
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
         runtimeCaching: [
           {
             // Cache API responses (short-lived)

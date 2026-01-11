@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X, AlertTriangle, Smartphone, Cloud, HardDrive, Zap, Cpu, ChevronDown, ChevronUp, FileText, FileDown, Sparkles, ListChecks, Tags, MessageSquare, Settings2 } from 'lucide-react'
+import { ArrowLeft, Download, Trash2, Play, Pause, Loader2, RotateCcw, Pencil, Check, X, AlertTriangle, Smartphone, Cloud, HardDrive, Zap, Cpu, ChevronDown, ChevronUp, FileText, FileDown, Sparkles, ListChecks, Tags, MessageSquare, Settings2, Users } from 'lucide-react'
 import { db, deleteRecording, addTranscription, updateRecordingSubject, updateRecordingTitle, fixRecordingDuration } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -12,9 +12,10 @@ import { transcribeOnServer, getServerTranscriptionStatus, type UsageInfo } from
 import { isMobileDevice, canUseLocalTranscription, getWebGPUInfo, type TranscriptionMode } from '@/lib/device-detection'
 import { convertAudioForWhisper } from '@/lib/audio-processing'
 import { exportTranscription, EXPORT_FORMATS, type ExportFormat } from '@/lib/export'
-import { analyzeTranscription, getAnalysis, isAIConfigured, type AnalysisProgress } from '@/lib/ai-analysis'
+import { analyzeTranscription, isAIConfigured, type AnalysisProgress } from '@/lib/ai-analysis'
 import { getAnalysisByTranscriptionId } from '@/lib/db'
-import type { Recording, Transcription, Subject, TranscriptionAnalysis } from '@shared/types'
+import { runSpeakerDiarization, getSpeakerLabel, updateSpeakerLabel } from '@/lib/speaker-detection'
+import type { Recording, Transcription, Subject, TranscriptionAnalysis, SpeakerLabel } from '@shared/types'
 
 // Check available memory (returns estimated MB available, or null if not supported)
 function getAvailableMemoryMB(): number | null {
@@ -59,6 +60,12 @@ export default function RecordingDetailPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null)
   const [aiConfigured, setAiConfigured] = useState(false)
+
+  // Speaker diarization state
+  const [isDetectingSpeakers, setIsDetectingSpeakers] = useState(false)
+  const [speakerLabels, setSpeakerLabels] = useState<SpeakerLabel[]>([])
+  const [editingSpeakerId, setEditingSpeakerId] = useState<string | null>(null)
+  const [editingSpeakerName, setEditingSpeakerName] = useState('')
   
   // Transcription mode state
   const [transcriptionMode, setTranscriptionMode] = useState<TranscriptionMode>(() => {
@@ -100,6 +107,13 @@ export default function RecordingDetailPage() {
       console.error('Failed to load analysis:', error)
     }
   }
+
+  // Load speaker labels when transcription changes
+  useEffect(() => {
+    if (transcription?.speakerLabels) {
+      setSpeakerLabels(transcription.speakerLabels)
+    }
+  }, [transcription?.speakerLabels])
   
   async function checkServerStatus() {
     // Fetch server status and WebGPU info in parallel
@@ -526,6 +540,65 @@ export default function RecordingDetailPage() {
     }
   }
 
+  async function handleDetectSpeakers() {
+    if (!transcription || !recording) return
+
+    setIsDetectingSpeakers(true)
+
+    try {
+      const result = await runSpeakerDiarization(
+        recording.audioBlob,
+        transcription.segments
+      )
+
+      // Update transcription with speaker info
+      const updatedTranscription: Transcription = {
+        ...transcription,
+        segments: result.segments,
+        speakerLabels: result.speakerLabels,
+        hasSpeakerDiarization: true,
+      }
+
+      // Save to database
+      await db.transcriptions.update(transcription.id, {
+        segments: result.segments,
+        speakerLabels: result.speakerLabels,
+        hasSpeakerDiarization: true,
+      })
+
+      setTranscription(updatedTranscription)
+      setSpeakerLabels(result.speakerLabels)
+
+      showAlert({
+        title: 'Speaker Detection Complete',
+        description: `Detected ${result.speakerLabels.length} speakers in this recording.`
+      })
+    } catch (error) {
+      console.error('Speaker detection failed:', error)
+      showAlert({
+        title: 'Speaker Detection Failed',
+        description: error instanceof Error ? error.message : 'Unknown error'
+      })
+    } finally {
+      setIsDetectingSpeakers(false)
+    }
+  }
+
+  function handleSaveSpeakerName(speakerId: string) {
+    if (!transcription) return
+
+    const updatedLabels = updateSpeakerLabel(speakerLabels, speakerId, editingSpeakerName)
+    setSpeakerLabels(updatedLabels)
+
+    // Save to database
+    db.transcriptions.update(transcription.id, {
+      speakerLabels: updatedLabels,
+    })
+
+    setEditingSpeakerId(null)
+    setEditingSpeakerName('')
+  }
+
   if (isLoading) {
     return (
       <div className="p-8 flex items-center justify-center">
@@ -942,16 +1015,123 @@ export default function RecordingDetailPage() {
 
               {transcription.segments && transcription.segments.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="text-sm font-semibold mb-3">Segments</h3>
-                  <div className="space-y-2">
-                    {transcription.segments.map((segment, i) => (
-                      <div key={i} className="flex gap-3 text-sm">
-                        <div className="text-muted-foreground w-20 flex-shrink-0">
-                          {formatTime(segment.start)} - {formatTime(segment.end)}
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold">Segments</h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDetectSpeakers}
+                      disabled={isDetectingSpeakers}
+                    >
+                      {isDetectingSpeakers ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin mr-1" />
+                          Detecting...
+                        </>
+                      ) : transcription.hasSpeakerDiarization ? (
+                        <>
+                          <Users size={14} className="mr-1" />
+                          Re-detect Speakers
+                        </>
+                      ) : (
+                        <>
+                          <Users size={14} className="mr-1" />
+                          Detect Speakers
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Speaker Labels */}
+                  {speakerLabels.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {speakerLabels.map(label => (
+                        <div
+                          key={label.id}
+                          className="flex items-center gap-2 px-2 py-1 bg-muted rounded-md"
+                        >
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: label.color }}
+                          />
+                          {editingSpeakerId === label.id ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={editingSpeakerName}
+                                onChange={(e) => setEditingSpeakerName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveSpeakerName(label.id)
+                                  if (e.key === 'Escape') {
+                                    setEditingSpeakerId(null)
+                                    setEditingSpeakerName('')
+                                  }
+                                }}
+                                className="w-24 px-1 py-0.5 text-xs bg-background border rounded"
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => handleSaveSpeakerName(label.id)}
+                                className="p-0.5 hover:bg-accent rounded"
+                              >
+                                <Check size={12} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingSpeakerId(null)
+                                  setEditingSpeakerName('')
+                                }}
+                                className="p-0.5 hover:bg-accent rounded"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setEditingSpeakerId(label.id)
+                                setEditingSpeakerName(label.name || '')
+                              }}
+                              className="flex items-center gap-1 text-xs hover:underline"
+                            >
+                              {label.name}
+                              <Pencil size={10} className="opacity-50" />
+                            </button>
+                          )}
                         </div>
-                        <div>{segment.text}</div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {transcription.segments.map((segment, i) => {
+                      const speaker = getSpeakerLabel(speakerLabels, segment.speakerId)
+                      return (
+                        <div key={i} className="flex gap-3 text-sm">
+                          <div className="text-muted-foreground w-20 flex-shrink-0">
+                            {formatTime(segment.start)} - {formatTime(segment.end)}
+                          </div>
+                          {speaker && (
+                            <div
+                              className="w-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: speaker.color }}
+                              title={speaker.name}
+                            />
+                          )}
+                          <div className="flex-1">
+                            {speaker && (
+                              <span
+                                className="text-xs font-medium mr-2"
+                                style={{ color: speaker.color }}
+                              >
+                                {speaker.name}:
+                              </span>
+                            )}
+                            {segment.text}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
