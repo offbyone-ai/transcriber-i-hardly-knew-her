@@ -47,7 +47,10 @@ export async function isAIConfigured(): Promise<boolean> {
 /**
  * Test the AI provider connection
  */
-export async function testAIConnection(config: AIProviderConfig): Promise<{ success: boolean; error?: string }> {
+export async function testAIConnection(
+  config: AIProviderConfig,
+  onModelProgress?: (progress: ModelDownloadProgress) => void
+): Promise<{ success: boolean; error?: string }> {
   if (config.provider === 'openai-compatible') {
     if (!config.apiUrl || !config.model) {
       return { success: false, error: 'API URL and model are required' }
@@ -63,7 +66,7 @@ export async function testAIConnection(config: AIProviderConfig): Promise<{ succ
     if (!config.localModel) {
       return { success: false, error: 'Local model is required' }
     }
-    return await testLocalConnection(config.localModel)
+    return await testLocalConnection(config.localModel, onModelProgress)
   }
 
   return { success: false, error: 'Unknown provider' }

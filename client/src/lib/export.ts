@@ -1,7 +1,24 @@
 // Export utilities for transcriptions
+// Uses dynamic imports for heavy libraries (jspdf, docx) to reduce initial bundle size
 import type { Recording, Transcription, TranscriptionSegment } from '@shared/types'
-import { jsPDF } from 'jspdf'
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx'
+
+// Lazy-loaded exports for heavy dependencies
+let jsPDFModule: typeof import('jspdf') | null = null
+let docxModule: typeof import('docx') | null = null
+
+async function getJsPDF() {
+  if (!jsPDFModule) {
+    jsPDFModule = await import('jspdf')
+  }
+  return jsPDFModule.jsPDF
+}
+
+async function getDocx() {
+  if (!docxModule) {
+    docxModule = await import('docx')
+  }
+  return docxModule
+}
 
 // Helper to format time as HH:MM:SS,mmm (SRT format)
 function formatTimeSRT(seconds: number): string {
@@ -187,9 +204,11 @@ export function exportToVTT(transcription: Transcription, recording: Recording):
 
 /**
  * Export transcription as PDF
+ * Uses dynamic import to load jspdf only when needed
  */
-export function exportToPDF(transcription: Transcription, recording: Recording): void {
+export async function exportToPDF(transcription: Transcription, recording: Recording): Promise<void> {
   const filename = getBaseFilename(recording)
+  const jsPDF = await getJsPDF()
   const doc = new jsPDF()
 
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -285,11 +304,13 @@ export function exportToPDF(transcription: Transcription, recording: Recording):
 
 /**
  * Export transcription as DOCX
+ * Uses dynamic import to load docx only when needed
  */
 export async function exportToDOCX(transcription: Transcription, recording: Recording): Promise<void> {
   const filename = getBaseFilename(recording)
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await getDocx()
 
-  const children: Paragraph[] = []
+  const children: InstanceType<typeof Paragraph>[] = []
 
   // Title
   children.push(
@@ -424,7 +445,7 @@ export async function exportTranscription(
       exportToVTT(transcription, recording)
       break
     case 'pdf':
-      exportToPDF(transcription, recording)
+      await exportToPDF(transcription, recording)
       break
     case 'docx':
       await exportToDOCX(transcription, recording)

@@ -165,17 +165,53 @@ app.get('/app/*', serveStatic({ path: './static/index.html' }))
 
 export default app
 
+// Check if a port is available
+async function isPortAvailable(port: number): Promise<boolean> {
+  try {
+    const server = Bun.serve({
+      port,
+      fetch: () => new Response('test'),
+    })
+    server.stop()
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Find an available port starting from the given port
+async function findAvailablePort(startPort: number, maxAttempts = 10): Promise<number> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const port = startPort + i
+    if (await isPortAvailable(port)) {
+      return port
+    }
+    console.log(`⚠️  Port ${port} is in use, trying ${port + 1}...`)
+  }
+  throw new Error(`Could not find an available port after ${maxAttempts} attempts starting from ${startPort}`)
+}
+
 // Start server when running in dev mode (not compiled executable)
 // Note: When compiled with `bun build --compile`, Bun automatically starts
 // the server using the exported default app, so this block is skipped
 if (import.meta.main && !Bun.main.includes('transcriber')) {
-  const port = process.env.PORT || 3000
-  console.log(`🚀 Transcriber server starting on port ${port}`)
-  
-  Bun.serve({
-    fetch: app.fetch,
-    port: Number(port),
+  const preferredPort = Number(process.env.PORT) || 3000
+
+  findAvailablePort(preferredPort).then((port) => {
+    console.log(`🚀 Transcriber server starting on port ${port}`)
+
+    Bun.serve({
+      fetch: app.fetch,
+      port,
+    })
+
+    console.log(`✅ Server running at http://localhost:${port}`)
+
+    if (port !== preferredPort) {
+      console.log(`💡 Tip: Set PORT=${port} in your environment or run the client with API_PORT=${port}`)
+    }
+  }).catch((err) => {
+    console.error('❌ Failed to start server:', err.message)
+    process.exit(1)
   })
-  
-  console.log(`✅ Server running at http://localhost:${port}`)
 }

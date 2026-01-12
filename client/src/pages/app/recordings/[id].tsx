@@ -1155,7 +1155,7 @@ export default function RecordingDetailPage() {
               </div>
               <div className="flex items-center gap-2">
                 {!aiConfigured && (
-                  <Link to="/app/settings" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                  <Link to="/settings" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
                     <Settings2 size={14} />
                     Configure AI
                   </Link>
@@ -1188,23 +1188,49 @@ export default function RecordingDetailPage() {
 
             {/* Analysis progress */}
             {isAnalyzing && analysisProgress && (
-              <div className="mb-6">
-                <div className="h-2 bg-accent rounded-full overflow-hidden">
+              <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                <div className="flex items-center gap-3 mb-3">
+                  {analysisProgress.status === 'initializing' ? (
+                    <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center">
+                      <Loader2 size={18} className="text-purple-600 dark:text-purple-400 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center">
+                      <Sparkles size={18} className="text-purple-600 dark:text-purple-400" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                      {analysisProgress.status === 'initializing'
+                        ? 'Loading AI Model'
+                        : 'Analyzing Transcript'}
+                    </p>
+                    <p className="text-xs text-purple-600 dark:text-purple-400">
+                      {analysisProgress.stage || 'Processing...'}
+                    </p>
+                  </div>
+                  <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                    {analysisProgress.progress}%
+                  </span>
+                </div>
+                <div className="h-2 bg-purple-200 dark:bg-purple-900/50 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-purple-500 transition-all"
+                    className="h-full bg-purple-500 transition-all duration-300"
                     style={{ width: `${analysisProgress.progress}%` }}
                   />
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {analysisProgress.stage || 'Processing...'}
-                </p>
+                {analysisProgress.status === 'initializing' && analysisProgress.progress < 20 && (
+                  <p className="text-xs text-purple-500 dark:text-purple-400 mt-2">
+                    First-time setup: Downloading AI model to your browser (cached for future use)
+                  </p>
+                )}
               </div>
             )}
 
             {!aiConfigured && !analysis && (
               <div className="text-center py-6 text-muted-foreground">
                 <p className="mb-2">AI analysis is not configured.</p>
-                <Link to="/app/settings" className="text-primary hover:underline">
+                <Link to="/settings" className="text-primary hover:underline">
                   Configure AI settings
                 </Link>
               </div>

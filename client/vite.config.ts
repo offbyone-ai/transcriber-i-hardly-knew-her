@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
+// Server port for API proxy (default 3000, configurable via API_PORT env var)
+const API_PORT = process.env.API_PORT || process.env.PORT || 3000
+
 export default defineConfig({
   base: '/app',
   plugins: [
@@ -98,6 +101,19 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split heavy ML dependencies into separate chunks
+          // These will only be loaded when needed
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['lucide-react', '@radix-ui/react-slot', 'class-variance-authority', 'clsx', 'tailwind-merge'],
+          // Export libraries - loaded on demand when exporting
+          'export-pdf': ['jspdf'],
+          'export-docx': ['docx'],
+        },
+      },
+    },
   },
   worker: {
     format: 'es',
@@ -123,7 +139,7 @@ export default defineConfig({
     proxy: {
       // Proxy API requests to the backend server in development
       '/api': {
-        target: 'http://localhost:3000',
+        target: `http://localhost:${API_PORT}`,
         changeOrigin: true,
         secure: false,
       },

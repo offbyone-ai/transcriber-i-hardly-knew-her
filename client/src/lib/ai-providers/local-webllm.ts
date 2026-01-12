@@ -247,7 +247,10 @@ export async function runAnalysis(
   analysisType: keyof typeof ANALYSIS_PROMPTS,
   onProgress?: (progress: ModelDownloadProgress) => void
 ): Promise<string | string[]> {
-  const prompt = ANALYSIS_PROMPTS[analysisType].replace('{transcript}', transcript)
+  // Use a function replacer to avoid issues with $ in transcript text
+  const prompt = ANALYSIS_PROMPTS[analysisType].replace('{transcript}', () => transcript)
+
+  console.log(`[LocalLLM] Running ${analysisType} analysis on ${transcript.length} chars`)
 
   const response = await chatCompletion(
     modelId,
@@ -301,13 +304,20 @@ export async function runFullAnalysis(
 ): Promise<AnalysisResult> {
   const result: AnalysisResult = {}
 
+  // Validate transcript
+  if (!transcript || transcript.trim().length === 0) {
+    throw new Error('No transcript text to analyze. Please transcribe the recording first.')
+  }
+
+  console.log(`[LocalLLM] Starting full analysis on transcript: "${transcript.slice(0, 100)}..."`)
+
   // Truncate very long transcripts (smaller models have less context)
   const maxLength = 4000
   const truncatedTranscript = transcript.length > maxLength
     ? transcript.slice(0, maxLength) + '...[truncated]'
     : transcript
 
-  onProgress?.('Loading model...')
+  onProgress?.('Loading AI model...')
   // Ensure model is loaded first
   await getEngine(modelId, onModelProgress)
 

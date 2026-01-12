@@ -29,6 +29,7 @@ export default function SettingsPage() {
   const [aiLocalModel, setAiLocalModel] = useState<string>(LOCAL_MODELS[0].id)
   const [aiTestStatus, setAiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
   const [aiTestError, setAiTestError] = useState<string>('')
+  const [modelLoadProgress, setModelLoadProgress] = useState<{ progress: number; text: string } | null>(null)
   const [aiSaving, setAiSaving] = useState(false)
   const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(null)
 
@@ -68,16 +69,28 @@ export default function SettingsPage() {
   useEffect(() => {
     async function loadAISettings() {
       const config = await getAISettings()
+      // Check WebGPU support first
+      const supported = await isWebGPUSupported()
+      setWebGPUSupported(supported)
+
       if (config) {
-        setAiProvider(config.provider)
+        // If user had local provider saved but WebGPU is now unavailable, switch to API
+        if (config.provider === 'local' && !supported) {
+          setAiProvider('openai-compatible')
+          // Keep other settings in case they switch back
+        } else {
+          setAiProvider(config.provider)
+        }
         setAiApiUrl(config.apiUrl || '')
         setAiApiKey(config.apiKey || '')
         setAiModel(config.model || '')
         setAiLocalModel(config.localModel || LOCAL_MODELS[0].id)
+      } else {
+        // No config saved - default to API mode if WebGPU unavailable
+        if (!supported) {
+          setAiProvider('openai-compatible')
+        }
       }
-      // Check WebGPU support
-      const supported = await isWebGPUSupported()
-      setWebGPUSupported(supported)
     }
     loadAISettings()
   }, [])
@@ -85,6 +98,7 @@ export default function SettingsPage() {
   async function handleTestAIConnection() {
     setAiTestStatus('testing')
     setAiTestError('')
+    setModelLoadProgress(null)
 
     const config: AIProviderConfig = {
       provider: aiProvider,
@@ -94,7 +108,12 @@ export default function SettingsPage() {
       localModel: aiLocalModel,
     }
 
-    const result = await testAIConnection(config)
+    const result = await testAIConnection(config, (progress) => {
+      setModelLoadProgress(progress)
+    })
+
+    setModelLoadProgress(null)
+
     if (result.success) {
       setAiTestStatus('success')
     } else {
@@ -368,12 +387,19 @@ export default function SettingsPage() {
                     aiProvider === 'local'
                       ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-border hover:bg-accent text-muted-foreground'
-                  }`}
+                  } ${webGPUSupported === false ? 'opacity-60' : ''}`}
                 >
                   <Cpu size={18} />
                   <div className="text-left">
-                    <div className="text-sm font-medium">In-Browser</div>
-                    <div className="text-xs opacity-70">Uses WebGPU</div>
+                    <div className="text-sm font-medium flex items-center gap-1.5">
+                      In-Browser
+                      {webGPUSupported === false && (
+                        <XCircle size={12} className="text-red-500" />
+                      )}
+                    </div>
+                    <div className="text-xs opacity-70">
+                      {webGPUSupported === false ? 'WebGPU unavailable' : 'Uses WebGPU'}
+                    </div>
                   </div>
                 </button>
                 <button
@@ -400,10 +426,34 @@ export default function SettingsPage() {
             {aiProvider === 'local' && (
               <div className="space-y-4">
                 {webGPUSupported === false && (
-                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg space-y-3">
                     <div className="flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
-                      <XCircle size={16} className="mt-0.5 shrink-0" />
-                      <span>WebGPU is not supported in this browser. Try Chrome or Edge for in-browser AI.</span>
+                      <XCircle size={18} className="mt-0.5 shrink-0" />
+                      <div className="space-y-2">
+                        <p className="font-medium">WebGPU is not supported in this browser</p>
+                        <p className="text-red-600 dark:text-red-400">
+                          In-browser AI requires WebGPU, which is not available in Safari, Firefox, or older browsers.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="ml-6 space-y-2">
+                      <p className="text-sm text-red-600 dark:text-red-400 font-medium">Options:</p>
+                      <ul className="text-sm text-red-600 dark:text-red-400 list-disc list-inside space-y-1">
+                        <li>Use <strong>Chrome</strong> or <strong>Edge</strong> browser for in-browser AI</li>
+                        <li>Switch to <strong>API mode</strong> below for cloud or local server AI</li>
+                      </ul>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setAiProvider('openai-compatible')
+                          handleApplyPreset('ollama')
+                        }}
+                        className="mt-2 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40"
+                      >
+                        <Cloud size={14} className="mr-2" />
+                        Switch to API Mode (Ollama)
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -590,6 +640,27 @@ export default function SettingsPage() {
                   )}
                 </Button>
               </div>
+
+              {/* Model Loading Progress */}
+              {aiTestStatus === 'testing' && aiProvider === 'local' && modelLoadProgress && (
+                <div className="p-3 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-purple-700 dark:text-purple-300 font-medium">
+                      {modelLoadProgress.progress < 100 ? 'Downloading Model...' : 'Loading Model...'}
+                    </span>
+                    <span className="text-purple-600 dark:text-purple-400">{modelLoadProgress.progress}%</span>
+                  </div>
+                  <div className="h-2 bg-purple-200 dark:bg-purple-900/50 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-purple-500 transition-all duration-300"
+                      style={{ width: `${modelLoadProgress.progress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 truncate">
+                    {modelLoadProgress.text}
+                  </p>
+                </div>
+              )}
 
               {/* Test Status */}
               {aiTestStatus === 'success' && (
