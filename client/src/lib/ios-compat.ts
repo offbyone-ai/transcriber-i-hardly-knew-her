@@ -180,6 +180,7 @@ export function requestIOSGarbageCollection(): void {
   // Request animation frame to yield to GC
   requestAnimationFrame(() => {
     // Create and immediately discard a large array to trigger GC heuristics
+    // @ts-ignore
     const _ = new Array(1000000)
   })
 }
