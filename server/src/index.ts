@@ -1,8 +1,9 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/bun'
+import { eq } from 'drizzle-orm'
 import type { ApiResponse } from 'shared/dist'
-import { runMigrations } from './db'
+import { runMigrations, db, user, passkey } from './db'
 import { auth } from './auth'
 import { transcriptionRoutes } from './transcription-routes'
 
@@ -71,6 +72,36 @@ app.use('/api/*', cors({
   credentials: true,
 }))
 
+// Check if a user has passkeys registered (used for login flow)
+app.get('/api/user/has-passkey/:email', async (c) => {
+  const email = c.req.param('email')
+
+  try {
+    // Find user by email
+    const foundUser = await db.query.user.findFirst({
+      where: eq(user.email, email),
+    })
+
+    if (!foundUser) {
+      // User doesn't exist - no passkeys
+      return c.json({ hasPasskey: false, userExists: false })
+    }
+
+    // Check if user has any passkeys
+    const userPasskeys = await db.query.passkey.findFirst({
+      where: eq(passkey.userId, foundUser.id),
+    })
+
+    return c.json({
+      hasPasskey: !!userPasskeys,
+      userExists: true
+    })
+  } catch (error) {
+    console.error('Error checking passkeys:', error)
+    return c.json({ error: 'Failed to check passkeys' }, 500)
+  }
+})
+
 // Mount better-auth handler
 app.on(['POST', 'GET'], '/api/auth/*', (c) => {
   return auth.handler(c.req.raw)
@@ -82,10 +113,10 @@ app.get('/api/dev/magic-link/:email', (c) => {
   if (process.env.NODE_ENV === 'production') {
     return c.json({ error: 'Not available in production' }, 403)
   }
-  
+
   const email = c.req.param('email')
   const url = (global as any).devMagicLinks?.get(email)
-  
+
   if (url) {
     return c.json({ url })
   } else {

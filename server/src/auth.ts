@@ -31,7 +31,8 @@ export const auth = betterAuth({
     passkey({
       rpID: process.env.BETTER_AUTH_URL ? new URL(process.env.BETTER_AUTH_URL).hostname : "localhost",
       rpName: "Transcriber",
-      origin: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+      // In dev, client runs on :5173; in prod, BETTER_AUTH_URL points to the actual domain
+      origin: process.env.BETTER_AUTH_URL || "http://localhost:5173",
     }),
     magicLink({
       sendMagicLink: async ({ email, url, token }) => {

@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom'
+import { Outlet, useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useSession, signOut } from '@/lib/auth-client'
 import { Mic, Folder, LayoutDashboard, Settings, LogOut, Menu, X } from 'lucide-react'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { AdBanner } from '@/components/ads/AdBanner'
+import { PasskeyPrompt } from '@/components/passkey-prompt'
 import { cn } from '@/lib/utils'
 
 export default function AppLayout() {
   const { data: session, isPending } = useSession()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  // Check if user just signed in via magic link
+  const isFromMagicLink = searchParams.get('auth') === 'magic-link'
 
   useEffect(() => {
     if (!isPending && !session) {
@@ -115,6 +120,9 @@ export default function AppLayout() {
           <AdBanner placement="transcription" />
         </div>
       </footer>
+
+      {/* Passkey prompt for users who signed in via magic link */}
+      <PasskeyPrompt showAfterMagicLink={isFromMagicLink} />
     </div>
   )
 }

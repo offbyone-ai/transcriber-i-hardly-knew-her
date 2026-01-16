@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card'
 import { useSpeechRecognition, type TranscriptSegment } from '@/hooks/use-speech-recognition'
 import { useLiveWhisper } from '@/hooks/use-live-whisper'
 import { TranscriptionModePicker, MobileTranscriptionWarning } from '@/components/transcription-mode-picker'
-import { canUseLocalTranscription } from '@/lib/device-detection'
+import { canUseLocalTranscription, isAndroidDevice } from '@/lib/device-detection'
 import type { TranscriptionMode } from '@/lib/device-detection'
 import type { Subject, Recording, Transcription, TranscriptionSegment } from '@shared/types'
 
@@ -880,6 +880,11 @@ export default function RecordPage() {
                         ? 'Uses browser speech recognition (fast but less accurate).'
                         : 'Uses Whisper AI model locally (more accurate, 5-second chunks).'}
                     </p>
+                    {liveTranscriptionEngine === 'browser' && isAndroidDevice() && (
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                        Note: Android requires an internet connection for browser speech recognition.
+                      </p>
+                    )}
                     {liveTranscriptionEngine === 'whisper' && !canUseWhisper && (
                       <p className="text-xs text-yellow-600 dark:text-yellow-400">
                         Whisper requires WebGPU support. Try Chrome or Edge.

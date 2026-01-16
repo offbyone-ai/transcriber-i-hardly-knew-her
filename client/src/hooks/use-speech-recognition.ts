@@ -1,11 +1,15 @@
 /**
  * Web Speech API hook for real-time speech recognition
- * 
+ *
  * Uses the browser's built-in SpeechRecognition API for fast, low-resource
  * real-time transcription. Less accurate than Whisper but much faster.
+ *
+ * Note: On Android, this API requires an active internet connection as it
+ * sends audio to Google's servers for processing.
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { isAndroidDevice } from '@/lib/device-detection'
 
 // Types for the Web Speech API (not fully typed in TypeScript)
 interface SpeechRecognitionEvent extends Event {
@@ -208,18 +212,18 @@ export function useSpeechRecognition(
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('[SpeechRecognition] Error:', event.error, event.message)
-      
+
       // Don't treat 'no-speech' as a fatal error - just continue
       if (event.error === 'no-speech') {
         console.log('[SpeechRecognition] No speech detected, continuing...')
         return
       }
-      
+
       // 'aborted' happens when we intentionally stop
       if (event.error === 'aborted') {
         return
       }
-      
+
       // 'not-allowed' means microphone permission denied
       if (event.error === 'not-allowed') {
         const errorMsg = 'Microphone access denied. Please allow microphone access and try again.'
@@ -229,15 +233,48 @@ export function useSpeechRecognition(
         setIsListening(false)
         return
       }
-      
-      // For other errors (like 'network', 'service-not-allowed', etc.)
+
+      // Network error - common on mobile devices
+      if (event.error === 'network') {
+        const isAndroid = isAndroidDevice()
+        const errorMsg = isAndroid
+          ? 'Network error. Android requires an internet connection for speech recognition. Please check your connection and try again.'
+          : 'Network error. Speech recognition requires an internet connection on some devices.'
+        setError(errorMsg)
+        onErrorRef.current?.(errorMsg)
+        shouldRestartRef.current = false
+        setIsListening(false)
+        return
+      }
+
+      // Service not allowed - can happen on some Android browsers
+      if (event.error === 'service-not-allowed') {
+        const errorMsg = 'Speech recognition service not available. This may be a browser limitation. Try using Chrome.'
+        setError(errorMsg)
+        onErrorRef.current?.(errorMsg)
+        shouldRestartRef.current = false
+        setIsListening(false)
+        return
+      }
+
+      // Audio capture error
+      if (event.error === 'audio-capture') {
+        const errorMsg = 'Could not capture audio. Please check your microphone is working and not in use by another app.'
+        setError(errorMsg)
+        onErrorRef.current?.(errorMsg)
+        shouldRestartRef.current = false
+        setIsListening(false)
+        return
+      }
+
+      // For other errors
       // Stop auto-restart but preserve existing transcript
       const errorMsg = `Speech recognition error: ${event.error}`
       setError(errorMsg)
       onErrorRef.current?.(errorMsg)
       shouldRestartRef.current = false
       setIsListening(false)
-      
+
       // NOTE: We intentionally DO NOT clear segments/transcript here
       // to preserve user's data even when recognition fails
     }

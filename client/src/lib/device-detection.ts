@@ -2,6 +2,8 @@
  * Device detection utilities for transcription mode selection
  */
 
+import { isTauriIOS, isTauriApp, isNativeMobile } from './platform'
+
 // WebGPU types - these are available in modern browsers but not in TS lib by default
 declare global {
   interface Navigator {
@@ -24,6 +26,16 @@ export function isMobileDevice(): boolean {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
   )
+}
+
+export function isAndroidDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android/i.test(navigator.userAgent)
+}
+
+export function isIOSDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
 }
 
 export function hasSharedArrayBuffer(): boolean {
@@ -88,18 +100,28 @@ export async function getWebGPUInfo(): Promise<{
  * in some browsers using a fallback approach
  */
 export function canUseLocalTranscription(): boolean {
-  // On desktop, always allow it - transformers.js has fallbacks
+  // Tauri iOS app: WKWebView doesn't support WebGPU, use server transcription
+  if (isTauriIOS()) {
+    return false
+  }
+
+  // Tauri desktop: allow local transcription
+  if (isTauriApp() && !isNativeMobile()) {
+    return true
+  }
+
+  // On desktop browser, always allow it - transformers.js has fallbacks
   if (!isMobileDevice()) {
     return true
   }
-  
-  // On mobile, check for WebGPU synchronously using the navigator.gpu existence
+
+  // On mobile browser, check for WebGPU synchronously using the navigator.gpu existence
   // This is a quick check - full WebGPU availability is async
   // If WebGPU is present, there's a good chance local will work well
   if (typeof navigator !== 'undefined' && navigator.gpu) {
     return true
   }
-  
+
   // No WebGPU on mobile = risky due to memory constraints
   return false
 }
@@ -112,20 +134,41 @@ export async function canUseLocalTranscriptionAsync(): Promise<{
   reason: string
   hasGPU: boolean
 }> {
+  // Tauri iOS: WKWebView doesn't support WebGPU
+  if (isTauriIOS()) {
+    return {
+      canUse: false,
+      reason: 'iOS app uses server transcription for best performance',
+      hasGPU: false,
+    }
+  }
+
+  // Tauri desktop: allow local transcription
+  if (isTauriApp() && !isNativeMobile()) {
+    const gpuAvailable = await hasWebGPU()
+    return {
+      canUse: true,
+      reason: gpuAvailable
+        ? 'Desktop app with GPU acceleration'
+        : 'Desktop app with CPU/WASM fallback',
+      hasGPU: gpuAvailable,
+    }
+  }
+
   const isMobile = isMobileDevice()
-  
+
   if (!isMobile) {
     const gpuAvailable = await hasWebGPU()
     return {
       canUse: true,
-      reason: gpuAvailable 
-        ? 'Desktop with GPU acceleration' 
+      reason: gpuAvailable
+        ? 'Desktop with GPU acceleration'
         : 'Desktop with CPU/WASM fallback',
       hasGPU: gpuAvailable,
     }
   }
-  
-  // Mobile - require WebGPU for good experience
+
+  // Mobile browser - require WebGPU for good experience
   const gpuAvailable = await hasWebGPU()
   if (gpuAvailable) {
     return {
@@ -134,7 +177,7 @@ export async function canUseLocalTranscriptionAsync(): Promise<{
       hasGPU: true,
     }
   }
-  
+
   return {
     canUse: false,
     reason: 'Mobile without GPU - memory constraints likely',
@@ -156,22 +199,52 @@ export async function getTranscriptionRecommendation(
   const isMobile = isMobileDevice()
   const hasWasmSupport = hasSharedArrayBuffer()
   const gpuAvailable = await hasWebGPU()
-  
+
   const available: TranscriptionMode[] = ['browser-speech']
-  
-  // Check if local transcription is viable
+
+  // Tauri iOS: server transcription only (WKWebView doesn't support WebGPU)
+  if (isTauriIOS()) {
+    if (serverAvailable) {
+      available.push('server')
+      return {
+        recommended: 'server',
+        available,
+        reason: 'Server transcription for iOS app',
+      }
+    }
+    return {
+      recommended: 'browser-speech',
+      available,
+      reason: 'Using browser speech recognition (server not available)',
+    }
+  }
+
+  // Tauri desktop: allow local transcription
+  if (isTauriApp() && !isNativeMobile()) {
+    available.push('local')
+    if (serverAvailable) available.push('server')
+    return {
+      recommended: 'local',
+      available,
+      reason: gpuAvailable
+        ? 'Desktop app with GPU acceleration'
+        : 'Desktop app with CPU/WASM fallback',
+    }
+  }
+
+  // Check if local transcription is viable for web
   // Desktop: always available
   // Mobile: only if WebGPU is available
   if (!isMobile || gpuAvailable) {
     available.push('local')
   }
-  
+
   // Check if server is available
   if (serverAvailable) {
     available.push('server')
   }
-  
-  // Determine recommendation
+
+  // Determine recommendation for web
   if (isMobile) {
     if (gpuAvailable) {
       // Mobile with WebGPU - local is viable!

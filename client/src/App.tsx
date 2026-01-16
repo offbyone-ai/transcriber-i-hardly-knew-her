@@ -6,6 +6,9 @@ import { PWAUpdatePrompt } from './components/pwa-update-prompt'
 import { Toaster } from './components/ui/sonner'
 import './index.css'
 
+// Check if running in Tauri native app
+const isTauri = '__TAURI__' in window
+
 // Import pages
 import LoginPage from './pages/login.tsx'
 import SignupPage from './pages/signup.tsx'
@@ -57,7 +60,8 @@ const router = createBrowserRouter([
     ],
   },
 ], {
-  basename: '/app',
+  // Use /app for web, / for Tauri native app
+  basename: isTauri ? '/' : '/app',
 })
 
 function App() {
@@ -67,7 +71,7 @@ function App() {
         <AlertProvider>
           <RouterProvider router={router} />
           <Toaster richColors position="top-right" />
-          <PWAUpdatePrompt />
+          {!isTauri && <PWAUpdatePrompt />}
         </AlertProvider>
       </ThemeProvider>
     </ErrorBoundary>
