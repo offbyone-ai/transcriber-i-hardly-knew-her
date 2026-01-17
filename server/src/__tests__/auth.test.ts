@@ -41,7 +41,7 @@ beforeAll(() => {
       enabled: true,
       requireEmailVerification: false,
     },
-    trustedOrigins: ["http://localhost:5173", "http://localhost:3000"],
+    trustedOrigins: ["http://localhost:5173", "http://localhost:3847"],
     advanced: {
       cookiePrefix: "transcriber_test",
     },

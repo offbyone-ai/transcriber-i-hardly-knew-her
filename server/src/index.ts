@@ -226,7 +226,7 @@ async function findAvailablePort(startPort: number, maxAttempts = 10): Promise<n
 // Note: When compiled with `bun build --compile`, Bun automatically starts
 // the server using the exported default app, so this block is skipped
 if (import.meta.main && !Bun.main.includes('transcriber')) {
-  const preferredPort = Number(process.env.PORT) || 3000
+  const preferredPort = Number(process.env.PORT) || 3847
 
   findAvailablePort(preferredPort).then((port) => {
     console.log(`🚀 Transcriber server starting on port ${port}`)

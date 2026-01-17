@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
-import { AlertCircle, Palette, Monitor, Fingerprint, Plus, Trash2, Bot, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { Palette, Fingerprint, Plus, Trash2, Bot, Loader2, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { WHISPER_MODELS, type WhisperModel, type AIProviderConfig, type AIProvider } from '@shared/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getPreferredModel, setPreferredModel } from '@/lib/model-manager'
-import { useTheme, getAvailableThemes, themeModes } from '@/components/theme-provider'
-import type { ThemePreset, ThemeMode } from '@/components/theme-provider'
+import { ThemeSwitcher } from '@/components/theme-switcher'
 import { authClient } from '@/lib/auth-client'
 import { toast } from 'sonner'
 import { getAISettings, saveAISettings } from '@/lib/db'
@@ -18,8 +17,7 @@ export default function SettingsPage() {
   const [preferredModel, setPreferredModelState] = useState<WhisperModel>(getPreferredModel())
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [passkeys, setPasskeys] = useState<Array<{ id: string; name?: string; createdAt?: Date }>>([])
-  const { preset, mode, setPreset, setMode } = useTheme()
-  const availableThemes = getAvailableThemes()
+
 
   // AI Settings state
   const [aiProvider, setAiProvider] = useState<AIProvider>('openai-compatible')
@@ -159,14 +157,6 @@ export default function SettingsPage() {
     setPreferredModelState(modelName)
   }
 
-  function handleSetPreset(newPreset: ThemePreset) {
-    setPreset(newPreset)
-  }
-
-  function handleSetMode(newMode: ThemeMode) {
-    setMode(newMode)
-  }
-
   return (
     <div className="p-4 sm:p-6 md:p-8 pb-32">
       <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
@@ -185,99 +175,11 @@ export default function SettingsPage() {
               <CardTitle>Appearance</CardTitle>
             </div>
             <CardDescription>
-              Customize how the application looks with different themes and color modes
+              Customize how the application looks with different themes and color modes. Hover over a theme to preview it.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Theme Preset Selection */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Theme Preset</h3>
-              <div className="grid grid-cols-1 gap-3">
-                {availableThemes.map((themePreset) => {
-                  const isSelected = preset === themePreset.value
-                  
-                  return (
-                    <label
-                      key={themePreset.value}
-                      className={`flex items-start gap-3 p-3 sm:p-4 border rounded-lg cursor-pointer transition-colors ${
-                        isSelected 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-border hover:bg-accent'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="theme-preset"
-                        checked={isSelected}
-                        onChange={() => handleSetPreset(themePreset.value)}
-                        className="mt-0.5 w-4 h-4 shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {themePreset.seasonal?.emoji && (
-                            <span className="text-lg">{themePreset.seasonal.emoji}</span>
-                          )}
-                          <span className="font-semibold text-sm">{themePreset.label}</span>
-                          {isSelected && (
-                            <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
-                              Active
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {themePreset.description}
-                        </p>
-                      </div>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Light/Dark Mode Selection */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Monitor size={16} className="text-muted-foreground" />
-                <h3 className="text-sm font-semibold">Color Mode</h3>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {themeModes.map((themeMode) => {
-                  const isSelected = mode === themeMode.value
-                  
-                  return (
-                    <button
-                      key={themeMode.value}
-                      onClick={() => handleSetMode(themeMode.value)}
-                      className={`px-3 sm:px-4 py-2 sm:py-3 rounded-lg border transition-colors text-xs sm:text-sm font-medium ${
-                        isSelected
-                          ? 'border-primary bg-primary/10 text-foreground'
-                          : 'border-border hover:bg-accent text-muted-foreground'
-                      }`}
-                    >
-                      {themeMode.label}
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Choose between light and dark mode, or follow your system preference
-              </p>
-            </div>
-
-            {/* Theme Preview Info */}
-            <div className="p-3 sm:p-4 bg-accent rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertCircle size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>
-                    <strong>Preview:</strong> Theme changes apply instantly. Each theme preset has unique colors for both light and dark modes.
-                  </p>
-                  <p>
-                    <strong>Tip:</strong> Try different combinations to find your perfect look!
-                  </p>
-                </div>
-              </div>
-            </div>
+          <CardContent>
+            <ThemeSwitcher />
           </CardContent>
         </Card>
 

@@ -19,7 +19,7 @@ export const auth = betterAuth({
     provider: "sqlite",
     schema,
   }),
-  trustedOrigins: ["http://localhost:5173", "http://localhost:3000"],
+  trustedOrigins: ["http://localhost:5173", "http://localhost:3847"],
   advanced: {
     cookiePrefix: "transcriber",
   },
@@ -36,8 +36,9 @@ export const auth = betterAuth({
     }),
     magicLink({
       sendMagicLink: async ({ email, url, token }) => {
-        if (!resend) {
-          console.warn('⚠️  Resend not configured - using development mode')
+        // In development mode, always log to console instead of sending email
+        const isDev = process.env.NODE_ENV !== 'production'
+        if (isDev) {
           console.log('\n' + '='.repeat(80))
           console.log('✨ MAGIC LINK (Development Mode)')
           console.log('='.repeat(80))
@@ -46,18 +47,22 @@ export const auth = betterAuth({
           console.log(`🎫 Token: ${token}`)
           console.log('='.repeat(80) + '\n')
           console.log('👉 Click or copy this link to sign in:\n   ' + url + '\n')
-          
-          // Store the URL temporarily for the dev response
-          // This is a simple in-memory store for dev mode only
+
+          // Store the URL temporarily for the client to fetch
           if (!global.devMagicLinks) {
             global.devMagicLinks = new Map()
           }
           global.devMagicLinks.set(email, url)
-          setTimeout(() => global.devMagicLinks?.delete(email), 10000) // Clean up after 10s
-          
+          setTimeout(() => global.devMagicLinks?.delete(email), 300000) // Clean up after 5 min
+
           return
         }
-        
+
+        // Production mode - send actual email
+        if (!resend) {
+          throw new Error('Email service not configured. Set RESEND_API_KEY environment variable.')
+        }
+
         try {
           
           const result = await resend.emails.send({

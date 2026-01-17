@@ -79,31 +79,11 @@ export default function LoginPage() {
 
 			setStep("magic-link-sent");
 
-			// In development, check if there's a magic link to show
+			// In development, show toast to check console for magic link
 			if (import.meta.env.DEV) {
-				setTimeout(async () => {
-					try {
-						const response = await fetch(
-							`/api/dev/magic-link/${encodeURIComponent(email)}`,
-						);
-						if (response.ok) {
-							const data = await response.json();
-							if (data.url) {
-								toast.success("Development Magic Link", {
-									description: "Click to sign in instantly",
-									action: {
-										label: "Sign In",
-										// biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
-										onClick: () => (window.location.href = data.url),
-									},
-									duration: 300000, // 5 minutes
-								});
-							}
-						}
-					} catch {
-						// Silently fail - not critical
-					}
-				}, 500);
+				toast.info("Dev Mode: Check your browser console for the magic link", {
+					duration: 10000,
+				});
 			}
 		} catch (err) {
 			const message =

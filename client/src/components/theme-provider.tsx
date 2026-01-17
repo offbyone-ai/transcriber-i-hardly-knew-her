@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
-type ThemePreset = 'default' | 'forest' | 'nature' | 'america' | 'ocean' | 'sunset' | 'lavender' | 'halloween' | 'winter' | 'valentine' | 'spring'
+type ThemePreset = 'default' | 'forest' | 'nature' | 'america' | 'ocean' | 'sunset' | 'lavender' | 'halloween' | 'winter' | 'valentine' | 'spring' | 'fearless' | 'speaknow' | 'red' | 'nineteen89' | 'reputation' | 'lover' | 'folklore' | 'evermore' | 'ttpd'
 type ThemeMode = 'light' | 'dark' | 'system'
 
 type ThemeProviderProps = {
@@ -134,6 +134,7 @@ type ThemeInfo = {
   value: ThemePreset
   label: string
   description: string
+  category?: 'general' | 'eras-tour' | 'seasonal'
   seasonal?: {
     months: number[] // 0-11 (January = 0, December = 11)
     emoji?: string
@@ -141,35 +142,53 @@ type ThemeInfo = {
 }
 
 const allThemePresets: ThemeInfo[] = [
-  { value: 'default', label: 'Default', description: 'Clean and minimal design' },
-  { value: 'forest', label: 'Forest', description: 'Bold green accents inspired by nature' },
-  { value: 'nature', label: 'Nature', description: 'Soft earth tones and organic colors' },
-  { value: 'america', label: 'America', description: 'Patriotic red, white, and blue palette' },
-  { value: 'ocean', label: 'Ocean', description: 'Calm blues and aqua tones' },
-  { value: 'sunset', label: 'Sunset', description: 'Warm oranges and golden hues' },
-  { value: 'lavender', label: 'Lavender Haze', description: 'Dreamy purples and soft violet tones' },
-  { 
-    value: 'halloween', 
-    label: 'Halloween', 
+  // General themes
+  { value: 'default', label: 'Default', description: 'Clean and minimal design', category: 'general' },
+  { value: 'forest', label: 'Forest', description: 'Bold green accents inspired by nature', category: 'general' },
+  { value: 'nature', label: 'Nature', description: 'Soft earth tones and organic colors', category: 'general' },
+  { value: 'america', label: 'America', description: 'Patriotic red, white, and blue palette', category: 'general' },
+  { value: 'ocean', label: 'Ocean', description: 'Calm blues and aqua tones', category: 'general' },
+  { value: 'sunset', label: 'Sunset', description: 'Warm oranges and golden hues', category: 'general' },
+
+  // Taylor Swift Eras Tour themes
+  { value: 'fearless', label: 'Fearless', description: 'Golden sparkles and country dreams', category: 'eras-tour' },
+  { value: 'speaknow', label: 'Speak Now', description: 'Enchanted orchid purple', category: 'eras-tour' },
+  { value: 'red', label: 'Red', description: 'All too well crimson vibes', category: 'eras-tour' },
+  { value: 'nineteen89', label: '1989', description: 'Polaroid seagull blue skies', category: 'eras-tour' },
+  { value: 'reputation', label: 'Reputation', description: 'Dark snake era aesthetic', category: 'eras-tour' },
+  { value: 'lover', label: 'Lover', description: 'Pastel pink and rainbow hues', category: 'eras-tour' },
+  { value: 'folklore', label: 'Folklore', description: 'Misty cardigan gray tones', category: 'eras-tour' },
+  { value: 'evermore', label: 'Evermore', description: 'Autumn willow rust browns', category: 'eras-tour' },
+  { value: 'lavender', label: 'Midnights', description: 'Lavender haze and dreamy violets', category: 'eras-tour' },
+  { value: 'ttpd', label: 'TTPD', description: 'Tortured poet manuscript beige', category: 'eras-tour' },
+
+  // Seasonal themes
+  {
+    value: 'halloween',
+    label: 'Halloween',
     description: 'Spooky oranges and blacks',
+    category: 'seasonal',
     seasonal: { months: [9], emoji: '🎃' } // October (0-indexed = 9)
   },
-  { 
-    value: 'winter', 
-    label: 'Winter Holiday', 
+  {
+    value: 'winter',
+    label: 'Winter Holiday',
     description: 'Festive reds, greens, and golds',
+    category: 'seasonal',
     seasonal: { months: [11], emoji: '❄️' } // December
   },
-  { 
-    value: 'valentine', 
-    label: 'Valentine', 
+  {
+    value: 'valentine',
+    label: 'Valentine',
     description: 'Romantic pinks and reds',
+    category: 'seasonal',
     seasonal: { months: [1], emoji: '💕' } // February
   },
-  { 
-    value: 'spring', 
-    label: 'Spring Bloom', 
+  {
+    value: 'spring',
+    label: 'Spring Bloom',
     description: 'Fresh pastels and blooming colors',
+    category: 'seasonal',
     seasonal: { months: [3], emoji: '🌸' } // April
   },
 ]
@@ -187,7 +206,7 @@ export function getAvailableThemes(): ThemeInfo[] {
   })
 }
 
-export const themePresets: Array<{ value: ThemePreset; label: string; description: string }> = allThemePresets
+export const themePresets: ThemeInfo[] = allThemePresets
 
 export const themeModes: Array<{ value: ThemeMode; label: string; description: string }> = [
   { value: 'light', label: 'Light', description: 'Light mode' },
@@ -195,4 +214,4 @@ export const themeModes: Array<{ value: ThemeMode; label: string; description: s
   { value: 'system', label: 'System', description: 'Follow system preference' },
 ]
 
-export type { ThemePreset, ThemeMode }
+export type { ThemePreset, ThemeMode, ThemeInfo }

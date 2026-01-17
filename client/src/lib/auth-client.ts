@@ -3,7 +3,7 @@ import { magicLinkClient } from "better-auth/client/plugins"
 import { passkeyClient } from "@better-auth/passkey/client"
 
 
-const baseURL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
+const baseURL = import.meta.env.VITE_SERVER_URL || "http://localhost:3847"
 
 export const authClient = createAuthClient({
   baseURL,

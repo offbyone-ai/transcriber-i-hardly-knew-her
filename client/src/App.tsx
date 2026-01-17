@@ -19,6 +19,7 @@ import SubjectDetailPage from './pages/app/subjects/[id].tsx'
 import RecordingDetailPage from './pages/app/recordings/[id].tsx'
 import RecordPage from './pages/app/record.tsx'
 import SettingsPage from './pages/app/settings.tsx'
+import FeedbackPage from './pages/app/feedback.tsx'
 
 const router = createBrowserRouter([
   {
@@ -56,6 +57,10 @@ const router = createBrowserRouter([
       {
         path: 'settings',
         element: <SettingsPage />,
+      },
+      {
+        path: 'feedback',
+        element: <FeedbackPage />,
       },
     ],
   },
