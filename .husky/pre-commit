@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Keep README in sync with diagrams, then stage README if changed
+bash scripts/sync-diagrams.sh
+if ! git diff --quiet -- README.md; then
+  git add README.md
+  echo "Updated README.md from diagrams and staged the change."
+fi

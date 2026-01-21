@@ -1,0 +1,13 @@
+sequenceDiagram
+  participant User
+  participant Browser
+  participant Whisper
+  participant Server
+
+  User->>Browser: Start recording
+  Browser->>Browser: Save chunks to Dexie
+  Browser->>Whisper: "Transcribe audio chunk (WASM)"
+  Whisper-->>Browser: Transcript
+  Browser->>Server: Sync recording + transcript (auth)
+  Server-->>DB_Server: Persist metadata
+  Server-->>Browser: Ack

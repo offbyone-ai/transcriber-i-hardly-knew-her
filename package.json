@@ -29,7 +29,10 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
-    "postinstall": "turbo build --filter=shared --filter=server"
+    "postinstall": "turbo build --filter=shared --filter=server",
+    "sync:diagrams": "bash scripts/sync-diagrams.sh",
+    "export:diagrams": "mmdc -i docs/diagrams/component.mmd -o docs/diagrams/assets/component.svg && mmdc -i docs/diagrams/sequence.mmd -o docs/diagrams/assets/sequence.svg && mmdc -i docs/diagrams/component.mmd -o docs/diagrams/assets/component.png -b transparent && mmdc -i docs/diagrams/sequence.mmd -o docs/diagrams/assets/sequence.png -b transparent",
+    "prepare": "husky install"
   },
   "keywords": [
     "bun",
@@ -42,7 +45,9 @@
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "bun-types": "latest",
-    "turbo": "^2.7.3"
+    "turbo": "^2.7.3",
+    "husky": "^8.0.0",
+    "@mermaid-js/mermaid-cli": "^10.0.0"
   },
   "peerDependencies": {
     "typescript": "^5.8.3"

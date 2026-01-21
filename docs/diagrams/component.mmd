@@ -1,0 +1,26 @@
+flowchart LR
+  subgraph Browser
+    U["User Browser / PWA"]
+    UI["Recorder UI"]
+    WASM["Whisper.cpp (WASM)"]
+    DB_Client["Dexie / IndexedDB"]
+  end
+
+  subgraph Server
+    API["Hono API"]
+    AUTH["better-auth"]
+    DB_Server["bun:sqlite"]
+    BACKUP["Backups / Exports"]
+  end
+
+  U --> UI
+  UI -->|record| DB_Client
+  UI -->|send audio| WASM
+  WASM -->|transcript| UI
+  UI -->|sync/auth| API
+  API --> AUTH
+  API --> DB_Server
+  API --> BACKUP
+
+TAURI["Optional Tauri desktop build (src-tauri)"]
+U -.-> TAURI

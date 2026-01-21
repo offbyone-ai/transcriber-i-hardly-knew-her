@@ -20,6 +20,20 @@ If you have an idea for an enhancement, please make sure the enhancement has not
 4.  Run `bun run build` to make sure your changes build correctly.
 5.  Issue that pull request!
 
+## Developer hooks
+
+This repository includes a Husky pre-commit hook that keeps `README.md` in sync with the canonical Mermaid sources in `docs/diagrams/`.
+
+- After cloning, run `bun install` (or `npm install`) to trigger the `prepare` script which runs `husky install` and sets up the hooks.
+- The pre-commit hook runs `bash scripts/sync-diagrams.sh` and will automatically stage `README.md` if it changes.
+- You can run the sync manually at any time:
+
+```bash
+bun run sync:diagrams
+```
+
+If you prefer not to use Husky, you can still run the sync script manually as part of your workflow.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under its MIT License.

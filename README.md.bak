@@ -52,17 +52,17 @@ A high-level overview of the system and the common flow for recording → transc
 ```mermaid
 flowchart LR
   subgraph Browser
-    U["User Browser / PWA"]
-    UI["Recorder UI"]
+    U[User Browser / PWA]
+    UI[Recorder UI]
     WASM["Whisper.cpp (WASM)"]
     DB_Client["Dexie / IndexedDB"]
   end
 
   subgraph Server
-    API["Hono API"]
-    AUTH["better-auth"]
-    DB_Server["bun:sqlite"]
-    BACKUP["Backups / Exports"]
+    API[Hono API]
+    AUTH[better-auth]
+    DB_Server[bun:sqlite]
+    BACKUP[Backups / Exports]
   end
 
   U --> UI
@@ -73,9 +73,9 @@ flowchart LR
   API --> AUTH
   API --> DB_Server
   API --> BACKUP
-
-TAURI["Optional Tauri desktop build (src-tauri)"]
-U -.-> TAURI
+  note right of U
+    Optional Tauri desktop build (src-tauri)
+  end note
 ```
 
 ### Sequence diagram (record & transcribe)
@@ -98,17 +98,7 @@ sequenceDiagram
   Server-->>Browser: Ack
 ```
 
-<!-- Fallback SVG for viewers that don't render Mermaid -->
-
-![Sequence diagram](docs/diagrams/assets/sequence.svg)
-
-> **Rendering & exports**: Mermaid diagrams render on GitHub and in many Markdown viewers (including VS Code with Mermaid preview extensions). If your viewer doesn't render Mermaid, use the included SVG/PNG assets in `docs/diagrams/assets/` or regenerate them locally with:
->
-> ```bash
-> bun run export:diagrams
-> ```
->
-> Recommended VS Code extensions: `Mermaid Preview` or `Markdown Preview Mermaid Support`. Open the Markdown preview with `Markdown: Open Preview to the Side` to see rendered diagrams.
+> Note: Mermaid diagrams render on GitHub and in many Markdown viewers (VS Code with Mermaid preview). If you need PNG/SVG exports, use a Mermaid renderer or VS Code extension.
 
 ## Where to find more
 
