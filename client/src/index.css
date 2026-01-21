@@ -437,41 +437,41 @@
 
 /* Fearless Light */
 [data-theme="fearless"].light {
-  --color-background: oklch(0.98 0.03 85);
-  --color-foreground: oklch(0.25 0.06 70);
-  --color-card: oklch(0.99 0.02 85);
-  --color-card-foreground: oklch(0.25 0.06 70);
-  --color-primary: oklch(0.75 0.18 85); /* Golden Yellow */
-  --color-primary-foreground: oklch(0.20 0.06 70);
-  --color-secondary: oklch(0.70 0.15 65); /* Warm Amber */
-  --color-secondary-foreground: oklch(0.20 0.06 70);
-  --color-accent: oklch(0.90 0.10 80); /* Light Gold */
-  --color-accent-foreground: oklch(0.25 0.06 70);
-  --color-muted: oklch(0.93 0.04 85);
-  --color-muted-foreground: oklch(0.50 0.06 75);
-  --color-border: oklch(0.88 0.06 85);
-  --color-input: oklch(0.88 0.06 85);
-  --color-ring: oklch(0.75 0.18 85);
-}
+  --color-background: #F9F5EE;
+  --color-foreground: #3A2B1E;
+  --color-card: #FFF9F4;
+  --color-card-foreground: #3A2B1E;
+  --color-primary: #D4A017; /* Gold */
+  --color-primary-foreground: #1B0F05;
+  --color-secondary: #B76B1B; /* Warm amber */
+  --color-secondary-foreground: #1B0F05;
+  --color-accent: #F4D03F; /* Light gold */
+  --color-accent-foreground: #1B0F05;
+  --color-muted: #F3ECE2;
+  --color-muted-foreground: #6B5A4A;
+  --color-border: #EADFCF;
+  --color-input: #EADFCF;
+  --color-ring: #D4A017;
+} 
 
 /* Fearless Dark */
 [data-theme="fearless"].dark {
-  --color-background: oklch(0.14 0.03 75);
-  --color-foreground: oklch(0.92 0.05 85);
-  --color-card: oklch(0.17 0.04 75);
-  --color-card-foreground: oklch(0.92 0.05 85);
-  --color-primary: oklch(0.72 0.20 85); /* Bright Gold */
-  --color-primary-foreground: oklch(0.15 0.05 75);
-  --color-secondary: oklch(0.60 0.18 65); /* Deep Amber */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.28 0.10 80);
-  --color-accent-foreground: oklch(0.92 0.05 85);
-  --color-muted: oklch(0.22 0.05 75);
-  --color-muted-foreground: oklch(0.68 0.08 85);
-  --color-border: oklch(0.28 0.08 80);
-  --color-input: oklch(0.28 0.08 80);
-  --color-ring: oklch(0.72 0.20 85);
-}
+  --color-background: #0F0E0C;
+  --color-foreground: #F6EFD9;
+  --color-card: #161412;
+  --color-card-foreground: #F6EFD9;
+  --color-primary: #D4A017; /* Gold */
+  --color-primary-foreground: #100B04;
+  --color-secondary: #B76B1B; /* Deep amber */
+  --color-secondary-foreground: #F6EFD9;
+  --color-accent: #F4D03F;
+  --color-accent-foreground: #100B04;
+  --color-muted: #1E1B18;
+  --color-muted-foreground: #7A6B59;
+  --color-border: #292522;
+  --color-input: #292522;
+  --color-ring: #D4A017;
+} 
 
 /* ----------------------------------------
    SPEAK NOW ERA - Orchid purple
@@ -479,41 +479,41 @@
 
 /* Speak Now Light */
 [data-theme="speaknow"].light {
-  --color-background: oklch(0.97 0.03 310);
-  --color-foreground: oklch(0.25 0.08 320);
-  --color-card: oklch(0.98 0.02 310);
-  --color-card-foreground: oklch(0.25 0.08 320);
-  --color-primary: oklch(0.55 0.22 320); /* Deep Orchid Purple */
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.65 0.18 340); /* Magenta Pink */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.88 0.10 305); /* Soft Violet */
-  --color-accent-foreground: oklch(0.25 0.08 320);
-  --color-muted: oklch(0.92 0.05 310);
-  --color-muted-foreground: oklch(0.50 0.08 320);
-  --color-border: oklch(0.87 0.07 310);
-  --color-input: oklch(0.87 0.07 310);
-  --color-ring: oklch(0.55 0.22 320);
-}
+  --color-background: #FBF7FB;
+  --color-foreground: #40123A;
+  --color-card: #FFF9FF;
+  --color-card-foreground: #40123A;
+  --color-primary: #8B2D8B; /* Deep Orchid */
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #BE6DDF; /* Lighter orchid */
+  --color-secondary-foreground: #40123A;
+  --color-accent: #D8B4FE; /* Soft violet */
+  --color-accent-foreground: #40123A;
+  --color-muted: #F4EFF6;
+  --color-muted-foreground: #8A6F89;
+  --color-border: #EFE6EF;
+  --color-input: #EFE6EF;
+  --color-ring: #8B2D8B;
+} 
 
 /* Speak Now Dark */
 [data-theme="speaknow"].dark {
-  --color-background: oklch(0.14 0.05 315);
-  --color-foreground: oklch(0.92 0.05 305);
-  --color-card: oklch(0.17 0.06 315);
-  --color-card-foreground: oklch(0.92 0.05 305);
-  --color-primary: oklch(0.58 0.24 318); /* Bright Orchid */
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.50 0.20 340); /* Deep Magenta */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.25 0.10 310);
-  --color-accent-foreground: oklch(0.92 0.05 305);
-  --color-muted: oklch(0.22 0.07 315);
-  --color-muted-foreground: oklch(0.68 0.10 310);
-  --color-border: oklch(0.30 0.10 315);
-  --color-input: oklch(0.30 0.10 315);
-  --color-ring: oklch(0.58 0.24 318);
-}
+  --color-background: #120A14;
+  --color-foreground: #F6EEFA;
+  --color-card: #16121A;
+  --color-card-foreground: #F6EEFA;
+  --color-primary: #8B2D8B; /* Bright Orchid */
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #BE6DDF;
+  --color-secondary-foreground: #F6EEFA;
+  --color-accent: #D8B4FE;
+  --color-accent-foreground: #120A14;
+  --color-muted: #1C151A;
+  --color-muted-foreground: #8A6F89;
+  --color-border: #221A20;
+  --color-input: #221A20;
+  --color-ring: #8B2D8B;
+} 
 
 /* ----------------------------------------
    RED ERA - Deep crimson
@@ -521,41 +521,41 @@
 
 /* Red Light */
 [data-theme="red"].light {
-  --color-background: oklch(0.98 0.02 15);
-  --color-foreground: oklch(0.20 0.06 20);
-  --color-card: oklch(0.99 0.01 15);
-  --color-card-foreground: oklch(0.20 0.06 20);
-  --color-primary: oklch(0.50 0.26 25); /* Deep Crimson */
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.40 0.20 15); /* Burgundy */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.90 0.08 20); /* Warm Blush */
-  --color-accent-foreground: oklch(0.20 0.06 20);
-  --color-muted: oklch(0.93 0.03 15);
-  --color-muted-foreground: oklch(0.50 0.05 20);
-  --color-border: oklch(0.88 0.05 15);
-  --color-input: oklch(0.88 0.05 15);
-  --color-ring: oklch(0.50 0.26 25);
-}
+  --color-background: #FFF6F6;
+  --color-foreground: #4A0F0F;
+  --color-card: #FFF9F9;
+  --color-card-foreground: #4A0F0F;
+  --color-primary: #DC2626; /* Vibrant Red */
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #6B0D0D; /* Deep Crimson */
+  --color-secondary-foreground: #FFFFFF;
+  --color-accent: #FCA5A5; /* Warm blush */
+  --color-accent-foreground: #4A0F0F;
+  --color-muted: #FFF0F0;
+  --color-muted-foreground: #7A2A2A;
+  --color-border: #FFE6E6;
+  --color-input: #FFE6E6;
+  --color-ring: #DC2626;
+} 
 
 /* Red Dark */
 [data-theme="red"].dark {
-  --color-background: oklch(0.12 0.04 15);
-  --color-foreground: oklch(0.92 0.04 20);
-  --color-card: oklch(0.15 0.05 15);
-  --color-card-foreground: oklch(0.92 0.04 20);
-  --color-primary: oklch(0.55 0.28 25); /* Vibrant Red */
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.35 0.22 10); /* Dark Burgundy */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.22 0.10 15);
-  --color-accent-foreground: oklch(0.92 0.04 20);
-  --color-muted: oklch(0.20 0.06 15);
-  --color-muted-foreground: oklch(0.65 0.08 20);
-  --color-border: oklch(0.28 0.10 18);
-  --color-input: oklch(0.28 0.10 18);
-  --color-ring: oklch(0.55 0.28 25);
-}
+  --color-background: #120909;
+  --color-foreground: #FDF6F6;
+  --color-card: #171010;
+  --color-card-foreground: #FDF6F6;
+  --color-primary: #DC2626; /* Vibrant Red */
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #6B0D0D; /* Dark burgundy */
+  --color-secondary-foreground: #FFFFFF;
+  --color-accent: #8B1E1E;
+  --color-accent-foreground: #FDF6F6;
+  --color-muted: #1B1414;
+  --color-muted-foreground: #7A2A2A;
+  --color-border: #261A1A;
+  --color-input: #261A1A;
+  --color-ring: #DC2626;
+} 
 
 /* ----------------------------------------
    1989 ERA - Seagull blue / polaroid
@@ -563,41 +563,41 @@
 
 /* 1989 Light */
 [data-theme="nineteen89"].light {
-  --color-background: oklch(0.97 0.02 220);
-  --color-foreground: oklch(0.20 0.06 230);
-  --color-card: oklch(0.98 0.01 220);
-  --color-card-foreground: oklch(0.20 0.06 230);
-  --color-primary: oklch(0.70 0.14 220); /* Seagull Blue */
-  --color-primary-foreground: oklch(0.20 0.06 230);
-  --color-secondary: oklch(0.80 0.10 200); /* Sky Blue */
-  --color-secondary-foreground: oklch(0.20 0.06 230);
-  --color-accent: oklch(0.92 0.06 210); /* Pale Blue */
-  --color-accent-foreground: oklch(0.20 0.06 230);
-  --color-muted: oklch(0.94 0.03 215);
-  --color-muted-foreground: oklch(0.50 0.06 220);
-  --color-border: oklch(0.88 0.05 215);
-  --color-input: oklch(0.88 0.05 215);
-  --color-ring: oklch(0.70 0.14 220);
-}
+  --color-background: #F6FBFF;
+  --color-foreground: #0F3B6F;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #0F3B6F;
+  --color-primary: #60A5FA; /* Seagird Blue */
+  --color-primary-foreground: #04305A;
+  --color-secondary: #3B82F6; /* Bright sky blue */
+  --color-secondary-foreground: #04305A;
+  --color-accent: #93C5FD;
+  --color-accent-foreground: #04305A;
+  --color-muted: #EAF6FF;
+  --color-muted-foreground: #7FADE8;
+  --color-border: #E0F0FF;
+  --color-input: #E0F0FF;
+  --color-ring: #60A5FA;
+} 
 
 /* 1989 Dark */
 [data-theme="nineteen89"].dark {
-  --color-background: oklch(0.14 0.04 225);
-  --color-foreground: oklch(0.92 0.04 215);
-  --color-card: oklch(0.17 0.05 225);
-  --color-card-foreground: oklch(0.92 0.04 215);
-  --color-primary: oklch(0.65 0.16 220); /* Bright Ocean Blue */
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.55 0.14 200); /* Twilight Blue */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.25 0.08 220);
-  --color-accent-foreground: oklch(0.92 0.04 215);
-  --color-muted: oklch(0.22 0.06 225);
-  --color-muted-foreground: oklch(0.68 0.08 220);
-  --color-border: oklch(0.30 0.08 222);
-  --color-input: oklch(0.30 0.08 222);
-  --color-ring: oklch(0.65 0.16 220);
-}
+  --color-background: #071027;
+  --color-foreground: #DDEEFF;
+  --color-card: #0C172D;
+  --color-card-foreground: #DDEEFF;
+  --color-primary: #60A5FA; /* Bright Ocean Blue */
+  --color-primary-foreground: #041638;
+  --color-secondary: #3B82F6; /* Twilight Blue */
+  --color-secondary-foreground: #DDEEFF;
+  --color-accent: #93C5FD;
+  --color-accent-foreground: #071027;
+  --color-muted: #0E223A;
+  --color-muted-foreground: #7FADE8;
+  --color-border: #12273F;
+  --color-input: #12273F;
+  --color-ring: #60A5FA;
+} 
 
 /* ----------------------------------------
    REPUTATION ERA - Black and snake green
@@ -605,40 +605,40 @@
 
 /* Reputation Light */
 [data-theme="reputation"].light {
-  --color-background: oklch(0.96 0.01 150);
-  --color-foreground: oklch(0.15 0.02 0);
-  --color-card: oklch(0.98 0 0);
-  --color-card-foreground: oklch(0.15 0.02 0);
-  --color-primary: oklch(0.18 0.02 0); /* Near Black */
+  --color-background: oklch(0.98 0.01 60);
+  --color-foreground: oklch(0.15 0.01 0);
+  --color-card: oklch(1.0 0 0);
+  --color-card-foreground: oklch(0.15 0.01 0);
+  --color-primary: oklch(0.50 0.22 25); /* Red */
   --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.55 0.15 145); /* Snake Green */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.90 0.03 155);
-  --color-accent-foreground: oklch(0.15 0.02 0);
-  --color-muted: oklch(0.92 0.02 0);
+  --color-secondary: oklch(0.70 0.15 75); /* Gold */
+  --color-secondary-foreground: oklch(0.15 0.01 0);
+  --color-accent: oklch(0.92 0.08 55);
+  --color-accent-foreground: oklch(0.15 0.01 0);
+  --color-muted: oklch(0.90 0.02 50);
   --color-muted-foreground: oklch(0.45 0.02 0);
   --color-border: oklch(0.85 0.02 0);
   --color-input: oklch(0.85 0.02 0);
-  --color-ring: oklch(0.18 0.02 0);
+  --color-ring: oklch(0.50 0.22 25);
 }
 
 /* Reputation Dark */
 [data-theme="reputation"].dark {
   --color-background: oklch(0.08 0.01 0);
   --color-foreground: oklch(0.92 0.02 0);
-  --color-card: oklch(0.11 0.01 0);
+  --color-card: oklch(0.12 0.01 0);
   --color-card-foreground: oklch(0.92 0.02 0);
-  --color-primary: oklch(0.92 0.02 0); /* Off White */
-  --color-primary-foreground: oklch(0.08 0.01 0);
-  --color-secondary: oklch(0.60 0.18 145); /* Bright Snake Green */
+  --color-primary: oklch(0.55 0.24 25); /* Red */
+  --color-primary-foreground: oklch(0.98 0 0);
+  --color-secondary: oklch(0.75 0.15 75); /* Gold */
   --color-secondary-foreground: oklch(0.08 0.01 0);
-  --color-accent: oklch(0.18 0.05 150);
+  --color-accent: oklch(0.20 0.08 35);
   --color-accent-foreground: oklch(0.92 0.02 0);
-  --color-muted: oklch(0.16 0.02 0);
+  --color-muted: oklch(0.18 0.02 0);
   --color-muted-foreground: oklch(0.60 0.02 0);
-  --color-border: oklch(0.22 0.03 0);
-  --color-input: oklch(0.22 0.03 0);
-  --color-ring: oklch(0.60 0.18 145);
+  --color-border: oklch(0.25 0.03 0);
+  --color-input: oklch(0.25 0.03 0);
+  --color-ring: oklch(0.75 0.15 75);
 }
 
 /* ----------------------------------------
@@ -647,41 +647,41 @@
 
 /* Lover Light */
 [data-theme="lover"].light {
-  --color-background: oklch(0.98 0.03 350);
-  --color-foreground: oklch(0.30 0.06 340);
-  --color-card: oklch(0.99 0.02 350);
-  --color-card-foreground: oklch(0.30 0.06 340);
-  --color-primary: oklch(0.75 0.15 350); /* Soft Pink */
-  --color-primary-foreground: oklch(0.30 0.06 340);
-  --color-secondary: oklch(0.80 0.12 220); /* Pastel Blue */
-  --color-secondary-foreground: oklch(0.30 0.06 340);
-  --color-accent: oklch(0.90 0.10 80); /* Pastel Yellow */
-  --color-accent-foreground: oklch(0.30 0.06 340);
-  --color-muted: oklch(0.94 0.04 350);
-  --color-muted-foreground: oklch(0.50 0.06 345);
-  --color-border: oklch(0.88 0.06 350);
-  --color-input: oklch(0.88 0.06 350);
-  --color-ring: oklch(0.75 0.15 350);
-}
+  --color-background: #FFF7FB;
+  --color-foreground: #4A2031;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #4A2031;
+  --color-primary: #F9A8D4; /* Pastel pink */
+  --color-primary-foreground: #381327;
+  --color-secondary: #FBCFE8; /* Lighter pink */
+  --color-secondary-foreground: #381327;
+  --color-accent: #FDE68A; /* Soft yellow */
+  --color-accent-foreground: #381327;
+  --color-muted: #FFF2F6;
+  --color-muted-foreground: #9E6F86;
+  --color-border: #FFEAF2;
+  --color-input: #FFEAF2;
+  --color-ring: #F9A8D4;
+} 
 
 /* Lover Dark */
 [data-theme="lover"].dark {
-  --color-background: oklch(0.14 0.04 345);
-  --color-foreground: oklch(0.92 0.05 350);
-  --color-card: oklch(0.17 0.05 345);
-  --color-card-foreground: oklch(0.92 0.05 350);
-  --color-primary: oklch(0.70 0.18 350); /* Bright Pink */
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.60 0.14 220); /* Soft Blue */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.30 0.10 355);
-  --color-accent-foreground: oklch(0.92 0.05 350);
-  --color-muted: oklch(0.22 0.06 345);
-  --color-muted-foreground: oklch(0.68 0.08 350);
-  --color-border: oklch(0.30 0.08 348);
-  --color-input: oklch(0.30 0.08 348);
-  --color-ring: oklch(0.70 0.18 350);
-}
+  --color-background: #120612;
+  --color-foreground: #FDF6F9;
+  --color-card: #161018;
+  --color-card-foreground: #FDF6F9;
+  --color-primary: #F9A8D4; /* Bright pastel pink */
+  --color-primary-foreground: #2B1020;
+  --color-secondary: #FBCFE8;
+  --color-secondary-foreground: #FDF6F9;
+  --color-accent: #FDE68A;
+  --color-accent-foreground: #120612;
+  --color-muted: #1A1317;
+  --color-muted-foreground: #9E6F86;
+  --color-border: #221219;
+  --color-input: #221219;
+  --color-ring: #F9A8D4;
+} 
 
 /* ----------------------------------------
    FOLKLORE ERA - Misty gray cardigan
@@ -689,41 +689,41 @@
 
 /* Folklore Light */
 [data-theme="folklore"].light {
-  --color-background: oklch(0.96 0.01 220);
-  --color-foreground: oklch(0.25 0.03 210);
-  --color-card: oklch(0.98 0.01 220);
-  --color-card-foreground: oklch(0.25 0.03 210);
-  --color-primary: oklch(0.55 0.05 210); /* Misty Gray-Blue */
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.65 0.08 160); /* Forest Green-Gray */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.88 0.03 200);
-  --color-accent-foreground: oklch(0.25 0.03 210);
-  --color-muted: oklch(0.92 0.02 215);
-  --color-muted-foreground: oklch(0.50 0.03 210);
-  --color-border: oklch(0.85 0.03 210);
-  --color-input: oklch(0.85 0.03 210);
-  --color-ring: oklch(0.55 0.05 210);
-}
+  --color-background: #F6F6F6;
+  --color-foreground: #333333;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #333333;
+  --color-primary: #9CA3AF; /* Misty gray */
+  --color-primary-foreground: #111111;
+  --color-secondary: #8FA34A; /* Olive */
+  --color-secondary-foreground: #111111;
+  --color-accent: #C59B4D; /* Warm tan/gold */
+  --color-accent-foreground: #111111;
+  --color-muted: #F0F0F0;
+  --color-muted-foreground: #777777;
+  --color-border: #E6E6E6;
+  --color-input: #E6E6E6;
+  --color-ring: #C59B4D;
+} 
 
 /* Folklore Dark */
 [data-theme="folklore"].dark {
-  --color-background: oklch(0.14 0.02 210);
-  --color-foreground: oklch(0.88 0.03 200);
-  --color-card: oklch(0.17 0.02 210);
-  --color-card-foreground: oklch(0.88 0.03 200);
-  --color-primary: oklch(0.60 0.06 200); /* Soft Gray-Blue */
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.50 0.10 160); /* Deep Forest */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.25 0.04 205);
-  --color-accent-foreground: oklch(0.88 0.03 200);
-  --color-muted: oklch(0.22 0.03 210);
-  --color-muted-foreground: oklch(0.62 0.04 205);
-  --color-border: oklch(0.28 0.04 208);
-  --color-input: oklch(0.28 0.04 208);
-  --color-ring: oklch(0.60 0.06 200);
-}
+  --color-background: #0F1010;
+  --color-foreground: #EDEDED;
+  --color-card: #141414;
+  --color-card-foreground: #EDEDED;
+  --color-primary: #9CA3AF; /* Misty gray */
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #8FA34A; /* Olive */
+  --color-secondary-foreground: #EDEDED;
+  --color-accent: #C59B4D;
+  --color-accent-foreground: #0F1010;
+  --color-muted: #1A1A1A;
+  --color-muted-foreground: #7B7B7B;
+  --color-border: #222222;
+  --color-input: #222222;
+  --color-ring: #C59B4D;
+} 
 
 /* ----------------------------------------
    EVERMORE ERA - Autumn willow
@@ -731,41 +731,41 @@
 
 /* Evermore Light */
 [data-theme="evermore"].light {
-  --color-background: oklch(0.97 0.03 70);
-  --color-foreground: oklch(0.28 0.06 55);
-  --color-card: oklch(0.98 0.02 70);
-  --color-card-foreground: oklch(0.28 0.06 55);
-  --color-primary: oklch(0.55 0.12 55); /* Rust Brown */
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.60 0.10 85); /* Amber */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.88 0.06 65);
-  --color-accent-foreground: oklch(0.28 0.06 55);
-  --color-muted: oklch(0.92 0.04 70);
-  --color-muted-foreground: oklch(0.50 0.06 60);
-  --color-border: oklch(0.85 0.05 65);
-  --color-input: oklch(0.85 0.05 65);
-  --color-ring: oklch(0.55 0.12 55);
-}
+  --color-background: #FBF7F3;
+  --color-foreground: #4A2B22;
+  --color-card: #FFF9F7;
+  --color-card-foreground: #4A2B22;
+  --color-primary: #5C2D21; /* Deep chestnut */
+  --color-primary-foreground: #FDF6F2;
+  --color-secondary: #B76B1B; /* Warm amber */
+  --color-secondary-foreground: #FDF6F2;
+  --color-accent: #D97706;
+  --color-accent-foreground: #4A2B22;
+  --color-muted: #F5F2EF;
+  --color-muted-foreground: #8F6B5E;
+  --color-border: #EDE2DB;
+  --color-input: #EDE2DB;
+  --color-ring: #5C2D21;
+} 
 
 /* Evermore Dark */
 [data-theme="evermore"].dark {
-  --color-background: oklch(0.14 0.04 50);
-  --color-foreground: oklch(0.88 0.05 65);
-  --color-card: oklch(0.17 0.05 50);
-  --color-card-foreground: oklch(0.88 0.05 65);
-  --color-primary: oklch(0.58 0.14 55); /* Warm Rust */
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.50 0.12 75); /* Golden Brown */
-  --color-secondary-foreground: oklch(0.98 0 0);
-  --color-accent: oklch(0.25 0.08 50);
-  --color-accent-foreground: oklch(0.88 0.05 65);
-  --color-muted: oklch(0.22 0.06 50);
-  --color-muted-foreground: oklch(0.62 0.07 60);
-  --color-border: oklch(0.30 0.08 55);
-  --color-input: oklch(0.30 0.08 55);
-  --color-ring: oklch(0.58 0.14 55);
-}
+  --color-background: #0D0B0A;
+  --color-foreground: #F7EFEA;
+  --color-card: #141211;
+  --color-card-foreground: #F7EFEA;
+  --color-primary: #5C2D21;
+  --color-primary-foreground: #FDF6F2;
+  --color-secondary: #B76B1B;
+  --color-secondary-foreground: #FDF6F2;
+  --color-accent: #D97706;
+  --color-accent-foreground: #0D0B0A;
+  --color-muted: #1B1816;
+  --color-muted-foreground: #8F6B5E;
+  --color-border: #231F1D;
+  --color-input: #231F1D;
+  --color-ring: #5C2D21;
+} 
 
 /* ----------------------------------------
    TTPD ERA - Manuscript beige

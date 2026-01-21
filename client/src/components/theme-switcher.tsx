@@ -19,14 +19,14 @@ const themeColors: Record<ThemePreset, string[]> = {
 	sunset: ["#ea580c", "#f59e0b", "#fbbf24", "#fcd34d"],
 
 	// Taylor Swift Eras Tour themes
-	fearless: ["#d4a017", "#f4d03f", "#ffeaa7", "#fff9db"],
-	speaknow: ["#8b2d8b", "#a855f7", "#d8b4fe", "#f3e8ff"],
-	red: ["#991b1b", "#dc2626", "#f87171", "#fecaca"],
-	nineteen89: ["#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"],
-	reputation: ["#171717", "#404040", "#4ade80", "#86efac"],
-	lover: ["#f9a8d4", "#c4b5fd", "#a5f3fc", "#fef08a"],
-	folklore: ["#6b7280", "#9ca3af", "#d1d5db", "#f3f4f6"],
-	evermore: ["#92400e", "#b45309", "#d97706", "#fbbf24"],
+	fearless: ["#5C3A21", "#B76B1B", "#D4A017", "#F4D03F"],
+	speaknow: ["#4B1D5A", "#8B2D8B", "#BE6DDF", "#D8B4FE"],
+	red: ["#6B0D0D", "#DC2626", "#B91C1C", "#FCA5A5"],
+	nineteen89: ["#60A5FA", "#93C5FD", "#3B82F6", "#DDEAFE"],
+	reputation: ["#000000", "#444444", "#B91C1C", "#FBBF24"],
+	lover: ["#F9A8D4", "#FBCFE8", "#FDE68A", "#FEE2E2"],
+	folklore: ["#9CA3AF", "#8FA34A", "#C59B4D", "#7B5A2B"],
+	evermore: ["#5C2D21", "#B76B1B", "#D97706", "#C19A6B"],
 	lavender: ["#7c3aed", "#a78bfa", "#c4b5fd", "#ddd6fe"],
 	ttpd: ["#78716c", "#a8a29e", "#d6d3d1", "#f5f5f4"],
 
@@ -62,6 +62,7 @@ function ThemeCard({
 
 	return (
 		<button
+			type="button"
 			onClick={onSelect}
 			onMouseEnter={onHover}
 			onMouseLeave={onHoverEnd}
@@ -78,7 +79,10 @@ function ThemeCard({
 			<div className="grid grid-cols-2 gap-0.5">
 				{colors.map((color, i) => (
 					<div
-						key={i}
+						key={`${color}-${
+							// biome-ignore lint/suspicious/noArrayIndexKey: fake
+							i
+						}`}
 						className="w-4 h-4 rounded border border-black/10 dark:border-white/10"
 						style={{ backgroundColor: color }}
 					/>
@@ -91,9 +95,7 @@ function ThemeCard({
 					{theme.label}
 				</span>
 				{theme.seasonal?.emoji && (
-					<span className="text-[10px] flex-shrink-0">
-						{theme.seasonal.emoji}
-					</span>
+					<span className="text-[10px] shrink-0">{theme.seasonal.emoji}</span>
 				)}
 			</div>
 
@@ -180,6 +182,7 @@ export function ThemeSwitcher() {
 				</div>
 				<div className="flex gap-1 p-1 bg-accent/50 rounded-lg">
 					<button
+						type="button"
 						onClick={() => setMode("light")}
 						className={cn(
 							"flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition",
@@ -193,6 +196,7 @@ export function ThemeSwitcher() {
 						<span className="hidden sm:inline">Light</span>
 					</button>
 					<button
+						type="button"
 						onClick={() => setMode("dark")}
 						className={cn(
 							"flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition",
@@ -206,6 +210,7 @@ export function ThemeSwitcher() {
 						<span className="hidden sm:inline">Dark</span>
 					</button>
 					<button
+						type="button"
 						onClick={() => setMode("system")}
 						className={cn(
 							"flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition",
@@ -274,7 +279,10 @@ export function ThemeSwitcherCompact() {
 			<div className="grid grid-cols-2 gap-0.5">
 				{currentColors.map((color, i) => (
 					<div
-						key={i}
+						key={`${color}-${
+							// biome-ignore lint/suspicious/noArrayIndexKey: not actually the only index
+							i
+						}`}
 						className="w-2 h-2 rounded-full border border-black/10 dark:border-white/10"
 						style={{ backgroundColor: color }}
 					/>
@@ -283,6 +291,7 @@ export function ThemeSwitcherCompact() {
 
 			{/* Mode toggle */}
 			<button
+				type="button"
 				onClick={() => {
 					if (mode === "light") setMode("dark");
 					else if (mode === "dark") setMode("system");
@@ -361,6 +370,7 @@ export function ThemeSwitcherSidebar() {
 		<div className="space-y-2">
 			{/* Collapsed view - click to expand */}
 			<button
+				type="button"
 				onClick={() => setIsExpanded(!isExpanded)}
 				className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-accent transition text-left"
 			>
@@ -368,7 +378,10 @@ export function ThemeSwitcherSidebar() {
 				<div className="grid grid-cols-2 gap-0.5 shrink-0">
 					{currentColors.map((color, i) => (
 						<div
-							key={i}
+							key={`${color}-${
+								// biome-ignore lint/suspicious/noArrayIndexKey: not using index only
+								i
+							}`}
 							className="w-2.5 h-2.5 rounded-sm"
 							style={{ backgroundColor: color }}
 						/>
@@ -402,6 +415,7 @@ export function ThemeSwitcherSidebar() {
 					{/* Mode Toggle */}
 					<div className="flex items-center gap-1 p-0.5 bg-accent/50 rounded-md">
 						<button
+							type="button"
 							onClick={() => setMode("light")}
 							className={cn(
 								"flex-1 flex items-center justify-center gap-1 p-1.5 rounded text-xs transition",
@@ -414,6 +428,7 @@ export function ThemeSwitcherSidebar() {
 							<span>Light</span>
 						</button>
 						<button
+							type="button"
 							onClick={() => setMode("dark")}
 							className={cn(
 								"flex-1 flex items-center justify-center gap-1 p-1.5 rounded text-xs transition",
@@ -426,6 +441,7 @@ export function ThemeSwitcherSidebar() {
 							<span>Dark</span>
 						</button>
 						<button
+							type="button"
 							onClick={() => setMode("system")}
 							className={cn(
 								"flex-1 flex items-center justify-center gap-1 p-1.5 rounded text-xs transition",
@@ -457,6 +473,7 @@ export function ThemeSwitcherSidebar() {
 
 											return (
 												<button
+													type="button"
 													key={theme.value}
 													onClick={() => handleSelect(theme.value)}
 													onMouseEnter={() => handleHover(theme.value)}
@@ -470,7 +487,10 @@ export function ThemeSwitcherSidebar() {
 													<div className="grid grid-cols-2 gap-0.5 shrink-0">
 														{colors.map((color, i) => (
 															<div
-																key={i}
+																key={`${color}-${
+																	// biome-ignore lint/suspicious/noArrayIndexKey: not using index only
+																	i
+																}`}
 																className="w-2 h-2 rounded-sm"
 																style={{ backgroundColor: color }}
 															/>
